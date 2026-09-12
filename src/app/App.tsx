@@ -22,6 +22,7 @@ export function App() {
   const [action, setAction] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [missionsOpen, setMissionsOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const objectives = questObjectives(quest);
   const currentObjective = objectives.find((objective) => objective.current < objective.total);
@@ -41,18 +42,25 @@ export function App() {
 
   useEffect(() => {
     if (character) {
-      gameStore.getState().setMode(portrait || journalOpen ? 'paused' : 'explore');
+      gameStore.getState().setMode(portrait || journalOpen || notice ? 'paused' : 'explore');
     }
-  }, [portrait, character, journalOpen]);
+  }, [portrait, character, journalOpen, notice]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setJournalOpen(false);
+      if (event.key === 'e' || event.key === 'E') {
+        if (!notice && !journalOpen) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (journalOpen) setJournalOpen(false);
+        else setNotice(null);
+      } else if (event.key === 'Escape') {
+        setJournalOpen(false);
+      }
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [journalOpen, notice]);
   useEffect(() => {
     if (!character) setReady(false);
   }, [character]);
@@ -77,30 +85,43 @@ export function App() {
       {character && !ready && <div className="loading-screen" role="status">Carregando a vila...</div>}
       {character && !portrait && (
         <div className="quest-hud">
-          <button className="journal-button" onClick={() => {
-            eventBus.emit('SAVE_REQUESTED', { reason: 'journal-opened' });
-            setJournalOpen(true);
-          }} aria-label="Abrir Caderno dos Encantos">📖 {firstQuest.title}</button>
-          <div>{quest.completed ? 'Missão concluída! A bancada voltou a brilhar.' : currentObjective ? `${currentObjective.label}: ${currentObjective.current}/${currentObjective.total}` : firstQuest.title}</div>
+          <button className="missions-toggle" type="button" aria-label={missionsOpen ? 'Ocultar missões' : 'Mostrar missões'} aria-expanded={missionsOpen} aria-controls="missions-list" onClick={() => setMissionsOpen((open) => !open)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5z"/><path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20M8 7h8M8 11h6"/></svg>
+            <span className="missions-count" aria-label={'' + (quest.completed ? 0 : 1) + ' missões pendentes'}>{quest.completed ? 0 : 1}</span>
+          </button>
+          {missionsOpen && <div className="missions-dropdown" id="missions-list">
+            <strong>Missões</strong>
+            <p>{firstQuest.title}</p>
+            <p>{quest.completed ? 'Missão concluída! A bancada voltou a brilhar.' : currentObjective ? currentObjective.label + ': ' + currentObjective.current + '/' + currentObjective.total : firstQuest.title}</p>
+            <button className="journal-button" type="button" onClick={() => {
+              eventBus.emit('SAVE_REQUESTED', { reason: 'journal-opened' });
+              setJournalOpen(true);
+            }} aria-label="Abrir Caderno dos Encantos">Abrir caderno</button>
+          </div>}
         </div>
       )}
       {character && !portrait && <MobileJoystick />}
-      {character && !portrait && !journalOpen && action && (
-        <button className="action-button" onClick={() => eventBus.emit('INTERACTION_REQUESTED', {})}>
-          {action}
+      {character && !portrait && !journalOpen && !notice && action && (
+        <button className="action-button" aria-label={action} aria-keyshortcuts="E Enter" onClick={() => eventBus.emit('INTERACTION_REQUESTED', {})}>
+          <span>{action}</span><kbd className="action-shortcut" aria-hidden="true">E</kbd>
         </button>
       )}
       {character && !portrait && notice && (
-        <div className="notice" role="status" onClick={() => setNotice(null)}>{notice}</div>
+        <div className="notice" role="status">
+          <span>{notice}</span>
+          <kbd className="notice-shortcut" aria-hidden="true">E · Fechar</kbd>
+          <button className="notice-close" type="button" aria-label="Fechar mensagem" onClick={() => setNotice(null)}>×</button>
+        </div>
       )}
       {saveFailed && <div className="save-warning" role="alert">Não foi possível salvar o progresso neste navegador.</div>}
       {character && journalOpen && !portrait && (
         <div className="journal-backdrop">
           <section className="journal" role="dialog" aria-modal="true" aria-labelledby="journal-title">
-            <button className="journal-close" onClick={() => setJournalOpen(false)} aria-label="Fechar caderno">×</button>
+            <button className="journal-close" onClick={() => setJournalOpen(false)} aria-label="Fechar caderno" aria-keyshortcuts="E Escape">×</button>
+            <kbd className="journal-shortcut" aria-hidden="true">E · Fechar</kbd>
             <h2 id="journal-title">Caderno dos Encantos</h2>
             <h3>{firstQuest.title}</h3>
-            <p>{quest.completed ? firstQuest.completedText : firstQuest.introduction}</p>
+            <p>{quest.completed ? 'Missão concluída! A bancada voltou a brilhar.' : currentObjective ? currentObjective.label + ': ' + currentObjective.current + '/' + currentObjective.total : firstQuest.title}</p>
             <ul>{objectives.map((objective) => <li key={objective.label}>{objective.label}: {objective.current}/{objective.total}</li>)}</ul>
             {quest.completed && <p>A bancada quebrada começou a brilhar. A próxima etapa será o reparo dela.</p>}
             <button className="new-game-button" onClick={() => {
