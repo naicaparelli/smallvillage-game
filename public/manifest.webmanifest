@@ -1,0 +1,9 @@
+{
+  "name": "Vila dos Pequenos Encantos",
+  "short_name": "Pequenos Encantos",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#25212f",
+  "theme_color": "#7b6b91",
+  "start_url": "/"
+}
