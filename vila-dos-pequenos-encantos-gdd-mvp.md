@@ -6,18 +6,18 @@
 **Plataforma inicial:** dispositivos móveis  
 **Perspectiva:** visão elevada com ambientes e construções em composição isométrica/frontal  
 **Direção visual:** pixel art baseada em tiles de 32 px  
-**Status:** conceito definido; protótipo técnico em desenvolvimento (Fase 0 concluída, Fase 1 parcial, Fases 2 e 3 implementadas com formas provisórias)
+**Status:** conceito definido; protótipo técnico em desenvolvimento (Fase 0 concluída, Fases 1 a 3 implementadas, com validação mobile pendente)
 
 ### Estado atual do protótipo
 
 - A base web abre em tela horizontal com o mapa ocupando toda a área visível, sem faixas laterais ou texto de protótipo sobreposto.
 - O mapa provisório é maior que a tela. A câmera acompanha o personagem e centraliza o mapa em qualquer eixo no qual ele seja menor que a área visível.
-- Há seleção entre coelhinho, gatinho e cachorrinho. As aparências atuais são formas provisórias desenhadas por código, substituíveis pelos sprites finais.
+- Há seleção entre coelhinho, gatinho e cachorrinho. Cada personagem usa imagens próprias para frente, costas, esquerda e direita, com pose parada e um passo alternado. As imagens originais são preservadas e exibidas em 28 × 48 px, dentro da célula lógica de 32 × 48 px.
 - Teclado (WASD/setas) e joystick por toque movem o personagem somente para norte, sul, leste ou oeste. O eixo predominante do joystick define a direção; o movimento diagonal foi removido por decisão de design.
 - O exterior e o interior provisórios do ateliê têm porta de entrada/saída, obstáculos e ação contextual por botão ou teclas `E`/`Enter`. Cinco caixas e três teias podem ser removidas; a janela pode ser aberta e libera a inspeção de uma fotografia.
 - O Caderno dos Encantos e o HUD acompanham a primeira missão. A limpeza, a janela e a fotografia avançam objetivos sem contagem duplicada; ao concluir, a bancada ganha brilho.
 - O progresso é salvo localmente: personagem, área, posição e estado da primeira missão retornam após recarregar. Há opção confirmada de novo jogo.
-- Ainda não há spritesheets, animações finais, cinemática, crafting ou decoração jogável. O fluxo foi testado automaticamente em Chrome desktop, mas ainda precisa de validação manual em celular.
+- A fachada, o piso externo e os objetos interativos agora usam os PNGs enviados. O piso externo atual tem cerca de 3 MB e ainda precisa ser validado em celular. Ainda não há cinemática, crafting ou decoração jogável. O fluxo foi testado automaticamente em Chrome desktop, mas ainda precisa de validação manual em celular.
 
 ---
 
@@ -123,7 +123,7 @@ Os três usam a mesma estrutura de roupa de artesão para que nenhuma espécie p
 - Célula lógica: **32 × 48 px**.
 - Quatro direções: norte, sul, leste e oeste.
 - Um sprite parado por direção.
-- Ciclo de caminhada com quatro frames por direção.
+- Ciclo de caminhada com dois frames por direção neste MVP: pose base e um passo. A estrutura de arquivos permite adicionar mais frames depois.
 - Perspectiva compatível com os ambientes do jogo.
 - Silhuetas diferentes, mas escala e importância visual equivalentes.
 

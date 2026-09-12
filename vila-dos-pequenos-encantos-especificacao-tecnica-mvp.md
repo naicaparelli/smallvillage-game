@@ -13,14 +13,14 @@
 | Fase | Situação | Resultado atual |
 | --- | --- | --- |
 | 0 — Fundação | Concluída na implementação; validação manual mobile pendente | React, TypeScript estrito, Vite 8, Phaser único, Event Bus, store vanilla, layout horizontal, tela de rotação, build, lint e Vitest. |
-| 1 — Personagem | Parcial | Seleção das três espécies, representações provisórias, teclado, joystick por Pointer Events, movimento cardinal e câmera. Faltam spritesheets, animações finais e validação em aparelhos reais. |
-| 2 — Ateliê e interação | Implementada com formas provisórias; validação manual pendente | Exterior e interior, colisão simples com obstáculos, porta com transição, ação contextual, cinco caixas, três teias, janela e fotografia. |
+| 1 — Personagem | Implementada com dois frames; validação mobile pendente | Seleção das três espécies, PNGs nas quatro direções, pose parada e passo alternado, teclado, joystick, movimento cardinal e câmera. |
+| 2 — Ateliê e interação | Implementada; validação mobile pendente | Fachada, piso externo e objetos com os PNGs enviados; interior e colisões ainda provisórios. Porta, ação contextual, caixas, teias, janela e fotografia funcionam. |
 | 3 — Missão e salvamento | Implementada; validação mobile pendente | Primeira missão orientada a eventos, HUD e Caderno, conclusão idempotente, save local V1 com personagem, área, posição e progresso; fluxo de recarga testado em Chrome desktop. |
 | 4 — Coleta e crafting | Não iniciada | Sem recursos, inventário ou bancada funcional. |
 | 5 — Decoração | Não iniciada | Sem posicionamento de móveis. |
 | 6 — Polimento mobile | Não iniciada | Sem áudio, testes em aparelhos reais ou ajustes finais de desempenho e acessibilidade. |
 
-Os mapas e personagens atuais são desenhados por código para validar escala, câmera, controles e interações. Eles não são assets definitivos. O canvas usa `Phaser.Scale.RESIZE` e ocupa a janela; a câmera segue o personagem dentro dos limites do mapa e centraliza o mapa nos eixos menores que a tela. A orientação vertical exibe um aviso e pausa o movimento. Objetos e obstáculos do ateliê ficam em `src/data/areas.ts`; colisões usam retângulos simples, sem física avançada. Build, lint, testes unitários e um teste Playwright de escolha → entrada → limpeza → recarga passaram em Chrome desktop. Ainda não houve validação em Android/iOS reais.
+O exterior, os objetos interativos e os personagens usam os PNGs enviados; o interior e os obstáculos ainda usam formas provisórias. Os personagens são exibidos em 28 × 48 px sem alterar os arquivos originais. O piso externo atual tem cerca de 3 MB; ainda falta validar seu carregamento em celular. O canvas usa `Phaser.Scale.RESIZE` e ocupa a janela; a câmera segue o personagem dentro dos limites do mapa e centraliza o mapa nos eixos menores que a tela. A orientação vertical exibe um aviso e pausa o movimento. Objetos e obstáculos do ateliê ficam em `src/data/areas.ts`; colisões usam retângulos simples, sem física avançada. Build, lint, testes unitários e um teste Playwright de escolha → entrada → limpeza → recarga passaram em Chrome desktop. Ainda não houve validação em Android/iOS reais.
 
 ---
 
@@ -352,7 +352,7 @@ Regras:
 - Usar `image-rendering: pixelated` no canvas quando necessário.
 - Evitar escalas individuais diferentes entre sprites do mesmo conjunto.
 - Usar posições inteiras para sprites e câmera.
-- Não aplicar filtros de suavização aos sprites.
+- Para pixel art nativa, não aplicar filtros de suavização. Os PNGs atuais dos personagens têm 177 × 304 px e recebem filtro linear apenas ao serem reduzidos para 28 × 48 px na renderização.
 - Ativar `roundPixels` também na câmera ao seguir o personagem.
 - Testar tremulação de pixels durante o movimento em aparelhos reais.
 
@@ -493,7 +493,7 @@ export type CharacterKind = 'rabbit' | 'kitten' | 'puppy';
 
 A espécie modifica apenas:
 
-- Chave do spritesheet.
+- Chaves das imagens por direção e estado.
 - Animações.
 - Retrato do personagem.
 - Nome visual da opção.
@@ -508,14 +508,14 @@ Para cada personagem:
 - Idle sul.
 - Idle leste.
 - Idle oeste.
-- Walk norte com quatro frames.
-- Walk sul com quatro frames.
-- Walk leste com quatro frames.
-- Walk oeste com quatro frames.
+- Walk norte com dois frames no MVP.
+- Walk sul com dois frames no MVP.
+- Walk leste com dois frames no MVP.
+- Walk oeste com dois frames no MVP.
 
 Configuração inicial da caminhada:
 
-- 8 a 10 frames por segundo.
+- Aproximadamente 6 frames por segundo com alternância entre pose base e passo; ampliar apenas quando houver novos frames.
 - Repetição contínua durante movimento.
 - Retorno imediato ao idle quando parar.
 
@@ -1022,10 +1022,10 @@ Executar pelo menos projetos equivalentes a Android Chrome e Mobile Safari.
 
 ### Fase 1 — Personagem
 
-**Estado atual:** parcialmente implementada. Seleção, formas provisórias, controles e câmera funcionam; spritesheets e animações ainda dependem dos assets finais, e falta validar toque em Android/iOS reais.
+**Estado atual:** implementada com as imagens atuais e dois frames por direção; falta validar toque, escala e desempenho em Android/iOS reais.
 
 - Tela de seleção.
-- Carregamento dos três spritesheets.
+- Carregamento das imagens dos três personagens nas quatro direções.
 - Spawn do personagem.
 - Joystick e teclado.
 - Quatro direções e animações.
@@ -1035,7 +1035,7 @@ Executar pelo menos projetos equivalentes a Android Chrome e Mobile Safari.
 
 ### Fase 2 — Ateliê e interação
 
-**Estado atual:** implementação provisória feita; falta validar o fluxo completo com teclado, mouse e toque em navegadores reais. O estado dos objetos limpos só dura enquanto a página está aberta; a persistência pertence à Fase 3.
+**Estado atual:** fachada, piso e objetos usam os PNGs enviados; o interior continua provisório. O fluxo com teclado e save passou em Chrome desktop; falta validar toque em Android/iOS reais.
 
 - Exterior e interior.
 - Colisões.

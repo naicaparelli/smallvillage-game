@@ -9,14 +9,18 @@ async function holdKey(page: import('@playwright/test').Page, key: string, ms: n
 test('mantém personagem, área e objeto limpo após recarregar', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Coelhinho' }).click();
+  await expect(page.locator('main[data-ready=true]')).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('canvas')).toBeVisible();
 
-  await holdKey(page, 'ArrowUp', 700);
+  await page.keyboard.down('ArrowUp');
+  await expect(page.getByRole('button', { name: 'Entrar no ateliê' })).toBeVisible({ timeout: 20_000 });
+  await page.keyboard.up('ArrowUp');
   await holdKey(page, 'e', 100);
   await expect(page.getByText('Todo grande recomeço precisa de um pequeno primeiro passo.')).toBeVisible();
 
-  await holdKey(page, 'ArrowLeft', 3200);
-  await expect(page.getByRole('button', { name: 'Retirar caixa' })).toBeVisible();
+  await page.keyboard.down('ArrowLeft');
+  await expect(page.getByRole('button', { name: 'Retirar caixa' })).toBeVisible({ timeout: 20_000 });
+  await page.keyboard.up('ArrowLeft');
   await holdKey(page, 'e', 100);
   await expect(page.getByText('Retirar caixas: 1/5')).toBeVisible();
 

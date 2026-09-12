@@ -6,6 +6,7 @@ import { characters, type CharacterKind } from '../data/characters';
 import { MobileJoystick } from '../ui/MobileJoystick';
 import { eventBus } from '../game/events/EventBus';
 import { firstQuest } from '../data/quests';
+import { characterAssetPath } from '../data/assetPaths';
 import { questObjectives } from '../game/systems/questProgress';
 
 function isPortrait(): boolean {
@@ -21,13 +22,15 @@ export function App() {
   const [action, setAction] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [journalOpen, setJournalOpen] = useState(false);
+  const [ready, setReady] = useState(false);
   const objectives = questObjectives(quest);
   const currentObjective = objectives.find((objective) => objective.current < objective.total);
 
   useEffect(() => {
+    const offReady = eventBus.on('PLAYER_READY', () => setReady(true));
     const offAction = eventBus.on('INTERACTION_AVAILABLE', ({ label }) => setAction(label));
     const offNotice = eventBus.on('NOTICE', ({ text }) => setNotice(text));
-    return () => { offAction(); offNotice(); };
+    return () => { offReady(); offAction(); offNotice(); };
   }, []);
 
   useEffect(() => {
@@ -50,8 +53,12 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (!character) setReady(false);
+  }, [character]);
+
   return (
-    <main className="game-shell">
+    <main className="game-shell" data-ready={ready}>
       {character ? <PhaserGame /> : (
         <section className="selection-screen" aria-labelledby="selection-title">
           <h1 id="selection-title">Escolha seu artesão</h1>
@@ -60,13 +67,14 @@ export function App() {
           <div className="character-options">
             {(Object.keys(characters) as CharacterKind[]).map((kind) => (
               <button className="character-card" key={kind} onClick={() => gameStore.getState().selectCharacter(kind)}>
-                <span className={`character-preview ${kind}`} aria-hidden="true">{characters[kind].symbol}</span>
+                <img className="character-preview" src={characterAssetPath(kind, 'front', 0)} alt="" />
                 <span>{characters[kind].name}</span>
               </button>
             ))}
           </div>
         </section>
       )}
+      {character && !ready && <div className="loading-screen" role="status">Carregando a vila...</div>}
       {character && !portrait && (
         <div className="quest-hud">
           <button className="journal-button" onClick={() => {

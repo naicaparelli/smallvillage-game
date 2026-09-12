@@ -16,12 +16,12 @@ Abra o endereço exibido pelo Vite. O jogo foi projetado para tela horizontal. U
 ## Estado atual
 
 - Fase 0 (fundação): implementada.
-- Fase 1 (personagem): parcial; ainda faltam spritesheets e animações finais.
-- Fase 2 (ateliê e interações): implementada com formas provisórias.
+- Fase 1 (personagem): imagens reais em quatro direções, com pose parada e dois frames de caminhada; falta validar em aparelhos reais.
+- Fase 2 (ateliê e interações): fachada, piso e objetos com assets; interior e colisões ainda provisórios.
 - Fase 3 (primeira missão e salvamento): implementada; progresso salvo localmente no navegador.
 - Fases 4 a 6: ainda não iniciadas.
 
-Os mapas e personagens atuais são provisórios. O fluxo da missão e do save passou em testes automatizados no Chrome desktop; ainda falta validar em aparelhos Android e iOS reais.
+O piso externo atual tem cerca de 3 MB; seu carregamento ainda precisa ser validado em celular. O fluxo da missão e do save passou em testes automatizados no Chrome desktop; ainda falta validar em aparelhos Android e iOS reais.
 
 ## Verificar
 

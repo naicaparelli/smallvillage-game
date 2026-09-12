@@ -1,6 +1,9 @@
-import Phaser from 'phaser';
+﻿import Phaser from 'phaser';
 import { areas, type AreaId, type AreaObject } from '../../data/areas';
-import { characters } from '../../data/characters';
+import type { CharacterKind } from '../../data/characters';
+import {
+  characterAssetPath, characterTextureKey, facings, objectTextureKey, sceneAssets, type Facing,
+} from '../../data/assetPaths';
 import { gameStore } from '../../state/gameStore';
 import { eventBus } from '../events/EventBus';
 import { mobileInput } from '../input/mobileInput';
@@ -11,16 +14,21 @@ import { firstQuest } from '../../data/quests';
 
 const SPEED = 90;
 const INTERACTION_RADIUS = 105;
+const WALK_FRAME_MS = 160;
+const PLAYER_WIDTH = 28;
+const PLAYER_HEIGHT = 48;
 
 export class AtelierScene extends Phaser.Scene {
   private areaId: AreaId = 'atelier-exterior';
   private player!: Phaser.GameObjects.Container;
-  private body!: Phaser.GameObjects.Rectangle;
+  private playerSprite!: Phaser.GameObjects.Image;
+  private characterKind!: CharacterKind;
+  private facing: Facing = 'front';
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
   private actionKeys!: Record<'E' | 'ENTER', Phaser.Input.Keyboard.Key>;
-  private objectSprites = new Map<string, Phaser.GameObjects.Rectangle>();
-  private bench: Phaser.GameObjects.Rectangle | null = null;
+  private objectSprites = new Map<string, Phaser.GameObjects.Image>();
+  private benchGlow: Phaser.GameObjects.Rectangle | null = null;
   private nearestId: string | null = null;
   private transitioning = false;
   private walkTime = 0;
@@ -30,7 +38,22 @@ export class AtelierScene extends Phaser.Scene {
     super('atelier');
   }
 
+  preload(): void {
+    this.characterKind = gameStore.getState().character ?? 'rabbit';
+    for (const facing of facings) {
+      for (const step of [0, 1] as const) {
+        this.load.image(characterTextureKey(this.characterKind, facing, step), characterAssetPath(this.characterKind, facing, step));
+      }
+    }
+    for (const [key, path] of Object.entries(sceneAssets)) this.load.image(key, path);
+  }
+
   create(): void {
+    for (const facing of facings) {
+      for (const step of [0, 1] as const) {
+        this.textures.get(characterTextureKey(this.characterKind, facing, step)).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      }
+    }
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as typeof this.wasd;
     this.actionKeys = this.input.keyboard!.addKeys('E,ENTER') as typeof this.actionKeys;
@@ -41,7 +64,7 @@ export class AtelierScene extends Phaser.Scene {
     const unsubscribe = eventBus.on('INTERACTION_REQUESTED', () => this.interact());
     const offSync = eventBus.on('SYNC_POSITION', () => this.syncPosition());
     const offQuest = eventBus.on('QUEST_UPDATED', () => {
-      if (gameStore.getState().quest.completed) this.bench?.setFillStyle(0xf2d48b);
+      if (gameStore.getState().quest.completed) this.benchGlow?.setAlpha(0.7);
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.updateCameraBounds, this);
@@ -58,51 +81,41 @@ export class AtelierScene extends Phaser.Scene {
     this.cameras.main.stopFollow();
     this.children.removeAll(true);
     this.objectSprites.clear();
-    this.bench = null;
+    this.benchGlow = null;
     this.nearestId = null;
     eventBus.emit('INTERACTION_AVAILABLE', { label: null });
 
-    const background = this.add.graphics();
-    background.fillStyle(this.areaId === 'atelier-exterior' ? 0x83977b : 0xb9a795);
-    background.fillRect(0, 0, area.width, area.height);
-    background.lineStyle(2, this.areaId === 'atelier-exterior' ? 0x72866b : 0xa18e82, 0.55);
-    for (let x = 0; x <= area.width; x += 64) background.lineBetween(x, 0, x, area.height);
-    for (let y = 0; y <= area.height; y += 64) background.lineBetween(0, y, area.width, y);
-
     if (this.areaId === 'atelier-exterior') {
-      this.add.rectangle(1100, 575, 350, 300, 0xc9b1bd).setStrokeStyle(8, 0x544557);
-      this.add.text(1100, 570, 'ATELIÊ', { fontFamily: 'sans-serif', fontSize: '30px', color: '#25212f' }).setOrigin(0.5);
-      this.add.rectangle(1100, 1170, 1400, 90, 0xc9bfa5);
+      this.add.image(area.width / 2, area.height / 2, 'floorEntry').setDisplaySize(area.width, area.height);
+      this.add.image(1100, 575, 'atelier');
     } else {
       this.add.rectangle(700, 450, 1300, 830, 0xd5c4b1).setStrokeStyle(20, 0x67535c);
       this.add.rectangle(700, 100, 1200, 32, 0x67535c);
       this.add.text(700, 65, 'ATELIÊ — INTERIOR', { fontFamily: 'sans-serif', fontSize: '25px', color: '#352b35' }).setOrigin(0.5);
-      this.bench = this.add.rectangle(920, 730, 110, 45, gameStore.getState().quest.completed ? 0xf2d48b : 0x6f5d57).setStrokeStyle(4, 0x544557);
-      this.add.text(920, 730, 'BANCADA', { fontFamily: 'sans-serif', fontSize: '14px', color: '#fff8ec' }).setOrigin(0.5);
+      this.benchGlow = this.add.rectangle(920, 730, 125, 65, 0xf2d48b, 0.8).setAlpha(gameStore.getState().quest.completed ? 0.7 : 0);
+      this.add.image(920, 730, 'bench');
     }
 
     const quest = gameStore.getState().quest;
     for (const object of area.objects) {
       if (quest.cleanedObjectIds.includes(object.id)) continue;
       if (object.kind === 'photograph' && !quest.windowOpen) continue;
-      const color = object.kind === 'door' ? 0x544557
-        : object.kind === 'box' ? 0x997655
-        : object.kind === 'cobweb' ? 0xe2e4df
-        : object.kind === 'window' ? quest.windowOpen ? 0xe4dba4 : 0x71858f
-        : 0xddbb78;
-      const width = object.kind === 'door' ? 74 : object.kind === 'window' ? 110 : 50;
-      const height = object.kind === 'door' ? 30 : object.kind === 'window' ? 55 : 42;
-      const shape = this.add.rectangle(object.x, object.y, width, height, color).setStrokeStyle(3, 0x544557);
-      this.objectSprites.set(object.id, shape);
+      const key = objectTextureKey(object.id);
+      if (!key) {
+        if (this.areaId === 'atelier-interior') this.add.rectangle(object.x, object.y, 74, 20, 0x544557, 0.35);
+        continue;
+      }
+      const image = this.add.image(object.x, object.y, object.kind === 'window' && quest.windowOpen ? 'windowOpen' : key);
+      this.objectSprites.set(object.id, image);
     }
 
-    const appearance = characters[gameStore.getState().character ?? 'rabbit'];
-    const feet = this.add.rectangle(0, 0, 24, 8, 0x544557);
-    this.body = this.add.rectangle(0, -22, 32, 38, appearance.color).setStrokeStyle(3, 0x544557);
-    const outfit = this.add.rectangle(0, -6, 28, 20, appearance.accent);
-    const marker = this.add.text(0, -28, appearance.symbol, { fontFamily: 'sans-serif', fontSize: '19px', color: '#544557' }).setOrigin(0.5);
+    this.facing = 'front';
+    this.walkTime = 0;
+    this.playerSprite = this.add.image(0, 0, characterTextureKey(this.characterKind, this.facing, 0))
+      .setOrigin(0.5, 1)
+      .setDisplaySize(PLAYER_WIDTH, PLAYER_HEIGHT);
     const position = gameStore.getState().playerPosition;
-    this.player = this.add.container(position.x, position.y, [feet, this.body, outfit, marker]);
+    this.player = this.add.container(position.x, position.y, [this.playerSprite]);
     this.player.setDepth(this.player.y);
     this.updateCameraBounds();
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
@@ -142,9 +155,9 @@ export class AtelierScene extends Phaser.Scene {
   private refreshInteraction(): void {
     const object = this.availableObject();
     if (object?.id === this.nearestId) return;
-    if (this.nearestId) this.objectSprites.get(this.nearestId)?.setStrokeStyle(3, 0x544557);
+    if (this.nearestId) this.objectSprites.get(this.nearestId)?.clearTint();
     this.nearestId = object?.id ?? null;
-    if (this.nearestId) this.objectSprites.get(this.nearestId)?.setStrokeStyle(5, 0xf4dca8);
+    if (this.nearestId) this.objectSprites.get(this.nearestId)?.setTint(0xffdfa8);
     eventBus.emit('INTERACTION_AVAILABLE', { label: object?.label ?? null });
   }
 
@@ -172,9 +185,9 @@ export class AtelierScene extends Phaser.Scene {
       eventBus.emit('OBJECT_CLEANED', { objectId: object.id, objectType: object.kind });
     } else if (object.kind === 'window') {
       eventBus.emit('WINDOW_OPENED', {});
-      this.objectSprites.get(object.id)?.setFillStyle(0xe4dba4);
+      this.objectSprites.get(object.id)?.setTexture('windowOpen');
       const photo = areas['atelier-interior'].objects.find((item) => item.kind === 'photograph');
-      if (photo) this.objectSprites.set(photo.id, this.add.rectangle(photo.x, photo.y, 50, 42, 0xddbb78).setStrokeStyle(3, 0x544557));
+      if (photo) this.objectSprites.set(photo.id, this.add.image(photo.x, photo.y, 'photo'));
     } else {
       eventBus.emit('PHOTO_FOUND', {});
       if (!gameStore.getState().quest.completed) {
@@ -182,6 +195,11 @@ export class AtelierScene extends Phaser.Scene {
       }
     }
     this.refreshInteraction();
+  }
+
+  private showFrame(step: 0 | 1): void {
+    const key = characterTextureKey(this.characterKind, this.facing, step);
+    if (this.playerSprite.texture.key !== key) this.playerSprite.setTexture(key);
   }
 
   update(_time: number, delta: number): void {
@@ -194,11 +212,12 @@ export class AtelierScene extends Phaser.Scene {
       if (this.wasMoving) this.syncPosition();
       this.wasMoving = false;
       this.walkTime = 0;
-      this.body.y = -22;
+      this.showFrame(0);
       this.refreshInteraction();
       return;
     }
     this.wasMoving = true;
+    this.facing = direction.y < 0 ? 'back' : direction.y > 0 ? 'front' : direction.x < 0 ? 'left' : 'right';
     const area = areas[this.areaId];
     const distance = SPEED * Math.min(delta, 50) / 1000;
     const nextX = Phaser.Math.Clamp(this.player.x + direction.x * distance, 16, area.width - 16);
@@ -207,7 +226,7 @@ export class AtelierScene extends Phaser.Scene {
     if (!isBlocked(this.player.x, nextY, 15, area.obstacles)) this.player.y = nextY;
     this.player.setDepth(this.player.y);
     this.walkTime += delta;
-    this.body.y = -22 + Math.round(Math.sin(this.walkTime / 90) * 2);
+    this.showFrame(Math.floor(this.walkTime / WALK_FRAME_MS) % 2 as 0 | 1);
     this.refreshInteraction();
   }
 }
