@@ -28,19 +28,28 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; over
 .missions-toggle svg { width: 29px; height: 29px; }
 .missions-toggle:hover, .missions-toggle:focus-visible { background: #59465e; outline-offset: 3px; }
 .missions-count { position: absolute; top: -9px; right: -10px; display: grid; place-items: center; min-width: 25px; height: 25px; padding: 0 5px; border: 2px solid #25212f; border-radius: 99px; background: #f4dca8; color: #25212f; font: 700 13px system-ui, sans-serif; }
-.missions-dropdown { width: min(85vw, 310px); margin-top: 10px; padding: 14px 16px; border: 2px solid #d5b7d3; border-radius: 14px; background: #25212ff2; box-shadow: 0 8px 24px #17131d66; font-size: 14px; }
-.missions-dropdown p { margin: 8px 0; }
-.missions-dropdown p:nth-of-type(2) { color: #f4dca8; }
-.journal-button { min-height: 44px; margin-top: 4px; padding: 8px 10px; border: 1px solid #d5b7d3; border-radius: 8px; background: #59465e; color: #fff8ec; font: 700 14px system-ui, sans-serif; cursor: pointer; }
-.journal-backdrop { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; background: #17131dbb; }
+.journal-backdrop { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: #17131dbb; }
 .journal { position: relative; width: min(520px, 100%); max-height: 90dvh; overflow: auto; padding: 24px; border: 3px solid #d5b7d3; border-radius: 18px; background: #423749; }
-.journal h2 { margin: 0 32px 14px 0; }.journal h3 { margin-bottom: 8px; }.journal ul { padding-left: 24px; line-height: 1.7; }
-.journal-close { position: absolute; top: 12px; right: 14px; width: 44px; height: 44px; border: 0; background: transparent; color: #fff8ec; font-size: 30px; cursor: pointer; }
+.journal h2 { margin: 0 32px 14px 0; }
+.journal ul { padding-left: 24px; line-height: 1.7; }
+.journal-mission { border: 1px solid #d5b7d3; border-radius: 10px; overflow: hidden; }
+.mission-summary { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 10px 14px; border: 0; background: #59465e; color: #fff8ec; font: inherit; text-align: left; cursor: pointer; }
+.mission-summary:hover, .mission-summary:focus-visible { background: #6a5370; outline-offset: -3px; }
+.mission-arrow { color: #f4dca8; font-size: 22px; line-height: 1; transition: transform 0.15s ease; }
+.mission-summary[aria-expanded="true"] .mission-arrow { transform: rotate(90deg); }
+.mission-title { flex: 1; font-weight: 700; }
+.mission-completed { color: #e8d994; white-space: nowrap; font-size: 14px; font-weight: 700; }
+.mission-details { padding: 2px 16px 12px; }
+.mission-details p { color: #f4dca8; }
+.mission-details ul { margin-bottom: 0; }
+.journal-close { display: none; position: absolute; top: 12px; right: 14px; width: 44px; height: 44px; border: 0; background: transparent; color: #fff8ec; font-size: 30px; cursor: pointer; }
 .new-game-button { min-height: 44px; padding: 8px 14px; border: 1px solid #e2c9df; border-radius: 8px; background: #59465e; color: #fff8ec; cursor: pointer; }
 .save-warning { position: absolute; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); max-width: 260px; padding: 10px; border-radius: 8px; background: #6b3030; }
 .loading-screen { position: absolute; inset: 0; display: grid; place-items: center; background: #25212f; color: #fff8ec; font-size: 20px; }
 .action-shortcut { display: inline-grid; place-items: center; min-width: 28px; height: 28px; margin-left: 10px; padding: 0 5px; border: 1px solid #fff8ec; border-radius: 6px; background: #fff8ec22; font: 700 15px system-ui, sans-serif; }
 .notice { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: min(90vw, 280px); z-index: 3; }
+.notice > span { white-space: pre-line; }
+.notice-photo { display: block; width: min(192px, 40dvh); height: auto; border: 3px solid #f4dca8; border-radius: 6px; image-rendering: pixelated; }
 .notice-shortcut, .journal-shortcut { color: #f4dca8; font: 700 13px system-ui, sans-serif; }
 .notice-close { display: none; position: absolute; top: 4px; right: 4px; width: 44px; height: 44px; place-items: center; border: 0; background: transparent; color: #fff8ec; font-size: 28px; cursor: pointer; }
 .journal-shortcut { position: absolute; top: 28px; right: 65px; }
@@ -50,4 +59,9 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; over
   .notice-close { display: grid; }
   .notice { padding-right: 54px; min-height: 58px; }
   .journal h2 { margin-right: 32px; }
+  .journal-close { display: block; }
+}
+
+@media (max-height: 400px) {
+  .notice:has(.notice-photo) { bottom: max(12px, env(safe-area-inset-bottom, 0px)); max-height: calc(100dvh - 24px); overflow: auto; }
 }

@@ -20,17 +20,22 @@ export function App() {
   const saveCorrupted = useStore(gameStore, (state) => state.saveCorrupted);
   const saveFailed = useStore(gameStore, (state) => state.saveFailed);
   const [action, setAction] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; image?: string } | null>(null);
   const [journalOpen, setJournalOpen] = useState(false);
-  const [missionsOpen, setMissionsOpen] = useState(false);
+  const [missionDetailsOpen, setMissionDetailsOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const objectives = questObjectives(quest);
   const currentObjective = objectives.find((objective) => objective.current < objective.total);
+  const openJournal = () => {
+    eventBus.emit('SAVE_REQUESTED', { reason: 'journal-opened' });
+    setMissionDetailsOpen(false);
+    setJournalOpen(true);
+  };
 
   useEffect(() => {
     const offReady = eventBus.on('PLAYER_READY', () => setReady(true));
     const offAction = eventBus.on('INTERACTION_AVAILABLE', ({ label }) => setAction(label));
-    const offNotice = eventBus.on('NOTICE', ({ text }) => setNotice(text));
+    const offNotice = eventBus.on('NOTICE', (payload) => setNotice(payload));
     return () => { offReady(); offAction(); offNotice(); };
   }, []);
 
@@ -85,19 +90,10 @@ export function App() {
       {character && !ready && <div className="loading-screen" role="status">Carregando a vila...</div>}
       {character && !portrait && (
         <div className="quest-hud">
-          <button className="missions-toggle" type="button" aria-label={missionsOpen ? 'Ocultar missões' : 'Mostrar missões'} aria-expanded={missionsOpen} aria-controls="missions-list" onClick={() => setMissionsOpen((open) => !open)}>
+          <button className="missions-toggle" type="button" aria-label="Abrir Caderno dos Encantos" onClick={openJournal}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5z"/><path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20M8 7h8M8 11h6"/></svg>
             <span className="missions-count" aria-label={'' + (quest.completed ? 0 : 1) + ' missões pendentes'}>{quest.completed ? 0 : 1}</span>
           </button>
-          {missionsOpen && <div className="missions-dropdown" id="missions-list">
-            <strong>Missões</strong>
-            <p>{firstQuest.title}</p>
-            <p>{quest.completed ? 'Missão concluída! A bancada voltou a brilhar.' : currentObjective ? currentObjective.label + ': ' + currentObjective.current + '/' + currentObjective.total : firstQuest.title}</p>
-            <button className="journal-button" type="button" onClick={() => {
-              eventBus.emit('SAVE_REQUESTED', { reason: 'journal-opened' });
-              setJournalOpen(true);
-            }} aria-label="Abrir Caderno dos Encantos">Abrir caderno</button>
-          </div>}
         </div>
       )}
       {character && !portrait && <MobileJoystick />}
@@ -108,7 +104,8 @@ export function App() {
       )}
       {character && !portrait && notice && (
         <div className="notice" role="status">
-          <span>{notice}</span>
+          {notice.image && <img className="notice-photo" src={notice.image} alt="Fotografia antiga encontrada no ateliê" />}
+          <span>{notice.text}</span>
           <kbd className="notice-shortcut" aria-hidden="true">E · Fechar</kbd>
           <button className="notice-close" type="button" aria-label="Fechar mensagem" onClick={() => setNotice(null)}>×</button>
         </div>
@@ -117,13 +114,20 @@ export function App() {
       {character && journalOpen && !portrait && (
         <div className="journal-backdrop">
           <section className="journal" role="dialog" aria-modal="true" aria-labelledby="journal-title">
-            <button className="journal-close" onClick={() => setJournalOpen(false)} aria-label="Fechar caderno" aria-keyshortcuts="E Escape">×</button>
+            <button className="journal-close" type="button" onClick={() => setJournalOpen(false)} aria-label="Fechar caderno">×</button>
             <kbd className="journal-shortcut" aria-hidden="true">E · Fechar</kbd>
             <h2 id="journal-title">Caderno dos Encantos</h2>
-            <h3>{firstQuest.title}</h3>
-            <p>{quest.completed ? 'Missão concluída! A bancada voltou a brilhar.' : currentObjective ? currentObjective.label + ': ' + currentObjective.current + '/' + currentObjective.total : firstQuest.title}</p>
-            <ul>{objectives.map((objective) => <li key={objective.label}>{objective.label}: {objective.current}/{objective.total}</li>)}</ul>
-            {quest.completed && <p>A bancada quebrada começou a brilhar. A próxima etapa será o reparo dela.</p>}
+            <div className="journal-mission">
+              <button className="mission-summary" type="button" aria-expanded={missionDetailsOpen} aria-controls="mission-details" onClick={() => setMissionDetailsOpen((open) => !open)}>
+                <span className="mission-arrow" aria-hidden="true">▸</span>
+                <span className="mission-title">{firstQuest.title}</span>
+                {quest.completed && <span className="mission-completed" aria-label="Missão concluída"><span aria-hidden="true">✓</span> Concluída</span>}
+              </button>
+              <div className="mission-details" id="mission-details" hidden={!missionDetailsOpen}>
+                <p>{quest.completed ? 'Missão concluída! A bancada voltou a brilhar.' : currentObjective ? currentObjective.label + ': ' + currentObjective.current + '/' + currentObjective.total : firstQuest.title}</p>
+                <ul>{objectives.map((objective) => <li key={objective.label}>{objective.label}: {objective.current}/{objective.total}</li>)}</ul>
+              </div>
+            </div>
             <button className="new-game-button" onClick={() => {
               if (!window.confirm('Apagar o progresso e começar um novo jogo?')) return;
               setJournalOpen(false);

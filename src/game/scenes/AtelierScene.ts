@@ -9,7 +9,7 @@ import { eventBus } from '../events/EventBus';
 import { mobileInput } from '../input/mobileInput';
 import { cardinalDirection } from '../input/cardinalDirection';
 import { cameraBounds } from '../utils/cameraBounds';
-import { isBlocked } from '../utils/collision';
+import { activeObstacles, isBlocked, nearestOpenPoint } from '../utils/collision';
 import { firstQuest } from '../../data/quests';
 
 const SPEED = 90;
@@ -92,8 +92,8 @@ export class AtelierScene extends Phaser.Scene {
       this.add.rectangle(700, 450, 1300, 830, 0xd5c4b1).setStrokeStyle(20, 0x67535c);
       this.add.rectangle(700, 100, 1200, 32, 0x67535c);
       this.add.text(700, 65, 'ATELIÊ — INTERIOR', { fontFamily: 'sans-serif', fontSize: '25px', color: '#352b35' }).setOrigin(0.5);
-      this.benchGlow = this.add.rectangle(920, 730, 125, 65, 0xf2d48b, 0.8).setAlpha(gameStore.getState().quest.completed ? 0.7 : 0);
-      this.add.image(920, 730, 'bench');
+      this.benchGlow = this.add.rectangle(920, 730, 125, 65, 0xf2d48b, 0.8).setDepth(729).setAlpha(gameStore.getState().quest.completed ? 0.7 : 0);
+      this.add.image(920, 730, 'bench').setDepth(730);
     }
 
     const quest = gameStore.getState().quest;
@@ -102,10 +102,10 @@ export class AtelierScene extends Phaser.Scene {
       if (object.kind === 'photograph' && !quest.windowOpen) continue;
       const key = objectTextureKey(object.id);
       if (!key) {
-        if (this.areaId === 'atelier-interior') this.add.rectangle(object.x, object.y, 74, 20, 0x544557, 0.35);
+        if (this.areaId === 'atelier-interior') this.add.rectangle(object.x, object.y, 74, 20, 0x544557, 0.35).setDepth(object.y);
         continue;
       }
-      const image = this.add.image(object.x, object.y, object.kind === 'window' && quest.windowOpen ? 'windowOpen' : key);
+      const image = this.add.image(object.x, object.y, object.kind === 'window' && quest.windowOpen ? 'windowOpen' : key).setDepth(object.y);
       this.objectSprites.set(object.id, image);
     }
 
@@ -114,7 +114,12 @@ export class AtelierScene extends Phaser.Scene {
     this.playerSprite = this.add.image(0, 0, characterTextureKey(this.characterKind, this.facing, 0))
       .setOrigin(0.5, 1)
       .setDisplaySize(PLAYER_WIDTH, PLAYER_HEIGHT);
-    const position = gameStore.getState().playerPosition;
+    const savedPosition = gameStore.getState().playerPosition;
+    const bounds = this.areaId === 'atelier-interior'
+      ? { minX: 80, maxX: 1320, minY: 140, maxY: 840 }
+      : { minX: 16, maxX: area.width - 16, minY: 8, maxY: area.height - 8 };
+    const position = nearestOpenPoint(savedPosition, 15, activeObstacles(this.areaId, quest), bounds);
+    if (position.x !== savedPosition.x || position.y !== savedPosition.y) gameStore.getState().setPosition(position);
     this.player = this.add.container(position.x, position.y, [this.playerSprite]);
     this.player.setDepth(this.player.y);
     this.updateCameraBounds();
@@ -187,12 +192,14 @@ export class AtelierScene extends Phaser.Scene {
       eventBus.emit('WINDOW_OPENED', {});
       this.objectSprites.get(object.id)?.setTexture('windowOpen');
       const photo = areas['atelier-interior'].objects.find((item) => item.kind === 'photograph');
-      if (photo) this.objectSprites.set(photo.id, this.add.image(photo.x, photo.y, 'photo'));
+      if (photo) this.objectSprites.set(photo.id, this.add.image(photo.x, photo.y, 'photo').setDepth(photo.y));
     } else {
       eventBus.emit('PHOTO_FOUND', {});
-      if (!gameStore.getState().quest.completed) {
-        eventBus.emit('NOTICE', { text: 'Uma fotografia antiga mostra o ateliê e a praça cheios de vida.' });
-      }
+      const photoText = 'Uma fotografia antiga mostra o ateliê e a praça cheios de vida.';
+      const text = gameStore.getState().quest.completed
+        ? photoText + '\n' + firstQuest.completedText
+        : photoText;
+      eventBus.emit('NOTICE', { text, image: sceneAssets.photo });
     }
     this.refreshInteraction();
   }
@@ -222,8 +229,9 @@ export class AtelierScene extends Phaser.Scene {
     const distance = SPEED * Math.min(delta, 50) / 1000;
     const nextX = Phaser.Math.Clamp(this.player.x + direction.x * distance, 16, area.width - 16);
     const nextY = Phaser.Math.Clamp(this.player.y + direction.y * distance, 8, area.height - 8);
-    if (!isBlocked(nextX, this.player.y, 15, area.obstacles)) this.player.x = nextX;
-    if (!isBlocked(this.player.x, nextY, 15, area.obstacles)) this.player.y = nextY;
+    const obstacles = activeObstacles(this.areaId, gameStore.getState().quest);
+    if (!isBlocked(nextX, this.player.y, 15, obstacles)) this.player.x = nextX;
+    if (!isBlocked(this.player.x, nextY, 15, obstacles)) this.player.y = nextY;
     this.player.setDepth(this.player.y);
     this.walkTime += delta;
     this.showFrame(Math.floor(this.walkTime / WALK_FRAME_MS) % 2 as 0 | 1);

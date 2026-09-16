@@ -9,7 +9,7 @@ type GameEventMap = {
   QUEST_UPDATED: { questId: string };
   SAVE_REQUESTED: { reason: string };
   SYNC_POSITION: Record<string, never>;
-  NOTICE: { text: string };
+  NOTICE: { text: string; image?: string };
 };
 
 type Listener<K extends keyof GameEventMap> = (payload: GameEventMap[K]) => void;
