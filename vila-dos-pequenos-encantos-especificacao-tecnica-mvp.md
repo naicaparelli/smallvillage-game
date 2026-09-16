@@ -16,11 +16,11 @@
 | 1 — Personagem | Implementada com dois frames; validação mobile pendente | Seleção das três espécies, PNGs nas quatro direções, pose parada e passo alternado, teclado, joystick, movimento cardinal e câmera. |
 | 2 — Ateliê e interação | Implementada; validação mobile pendente | Fachada, piso externo e objetos com os PNGs enviados; interior e colisões ainda provisórios. Porta, ação contextual, caixas, teias, janela e fotografia funcionam. |
 | 3 — Missão e salvamento | Implementada; validação mobile pendente | Primeira missão orientada a eventos, HUD e Caderno, conclusão idempotente, save local V1 com personagem, área, posição e progresso; fluxo de recarga testado em Chrome desktop. |
-| 4 — Coleta e crafting | Não iniciada | Sem recursos, inventário ou bancada funcional. |
+| 4 — Coleta e crafting | Fluxo inicial implementado; validação mobile pendente | Cinco pontos fixos de madeira disponíveis desde o início e três pontos de pedra disponíveis após a primeira missão; todos reaparecem individualmente após 3 minutos. Barra de inventário com seis espaços na base da tela, imagens e quantidade, reparo da bancada (3 madeiras e 2 pedras) bloqueado até a missão terminar, fabricação de uma cadeira (2 madeiras e 1 pedra) e save V4 com leitura de V1/V2/V3. Ícone e contagem regressiva sobre cada recurso indisponível; marcadores ainda provisórios. |
 | 5 — Decoração | Não iniciada | Sem posicionamento de móveis. |
-| 6 — Polimento mobile | Não iniciada | Sem áudio, testes em aparelhos reais ou ajustes finais de desempenho e acessibilidade. |
+| 6 — Polimento mobile | Parcialmente adiantada; validação mobile pendente | Música em loop e efeitos de porta, limpeza, janela, fotografia e passos por ambiente; controle geral de áudio com preferência local. Faltam testes em aparelhos reais e ajustes finais de desempenho e acessibilidade. |
 
-O exterior, os objetos interativos e os personagens usam os PNGs enviados; o interior e os obstáculos ainda usam formas provisórias. Os personagens são exibidos em 28 × 48 px sem alterar os arquivos originais. O piso externo atual tem cerca de 3 MB; ainda falta validar seu carregamento em celular. O canvas usa `Phaser.Scale.RESIZE` e ocupa a janela; a câmera segue o personagem dentro dos limites do mapa e centraliza o mapa nos eixos menores que a tela. A orientação vertical exibe um aviso e pausa o movimento. Objetos e obstáculos do ateliê ficam em `src/data/areas.ts`; colisões usam retângulos simples, sem física avançada. Build, lint, testes unitários e um teste Playwright de escolha → entrada → limpeza → recarga passaram em Chrome desktop. Ainda não houve validação em Android/iOS reais.
+O exterior, os objetos interativos e os personagens usam os PNGs enviados; o interior e os obstáculos ainda usam formas provisórias. Os personagens são exibidos em 28 × 48 px sem alterar os arquivos originais. O piso externo atual tem cerca de 3 MB; ainda falta validar seu carregamento em celular. O canvas usa `Phaser.Scale.RESIZE` e ocupa a janela; a câmera segue o personagem dentro dos limites do mapa e centraliza o mapa nos eixos menores que a tela. A orientação vertical exibe um aviso e pausa o movimento. Objetos e obstáculos do ateliê ficam em `src/data/areas.ts`; colisões usam retângulos simples, sem física avançada. Build, lint, testes unitários e um teste Playwright de escolha → entrada → limpeza → recarga passaram em Chrome desktop. O áudio começa após uma interação do jogador, usa música em loop e efeitos contextuais, e pode ser desligado por um botão cuja preferência fica no `localStorage`. Os créditos e as fontes dos arquivos estão em `CREDITOS-AUDIO.md` e `public/assets/audio/SOURCES.md`. Os pontos de madeira e pedra mantêm posições fixas e voltam a ficar disponíveis 3 minutos após cada coleta, inclusive depois de recarregar a página. O mobiliário criado fica no inventário até a Fase 5. Ainda não houve validação em Android/iOS reais.
 
 ---
 
@@ -413,10 +413,10 @@ Não aplicar padding ao canvas: ele deve preencher a janela sem faixas laterais.
 ### 7.3 Distribuição do HUD
 
 - **Canto superior esquerdo:** objetivo atual resumido.
-- **Canto superior direito:** materiais relevantes ou acesso ao inventário.
-- **Canto inferior esquerdo:** joystick virtual.
+- **Canto superior direito:** controle de áudio.
+- **Canto inferior esquerdo:** joystick virtual e notificações compactas de coleta acima dele. Itens iguais coletados em sequência acumulam a quantidade e a mensagem desaparece após três segundos.
 - **Canto inferior direito:** botão de ação contextual.
-- **Centro inferior:** mensagem curta da interação disponível.
+- **Centro inferior:** barra de inventário com seis espaços, ícones e quantidades no canto inferior direito de cada espaço.
 - **Centro da tela:** diálogos, crafting e decoração em modais ou painéis.
 
 Todos os elementos devem respeitar as safe areas do aparelho.

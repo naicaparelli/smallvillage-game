@@ -1,6 +1,6 @@
 import { gameStore } from '../state/gameStore';
 import { eventBus } from '../game/events/EventBus';
-import { clearSave, writeSave, type SaveDataV1 } from './saveService';
+import { clearSave, writeSave, type SaveDataV4 } from './saveService';
 
 let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -9,13 +9,16 @@ export function saveNow(): boolean {
   const state = gameStore.getState();
   const saved = state.character
     ? writeSave({
-        version: 1,
+        version: 4,
         updatedAt: new Date().toISOString(),
         character: state.character,
         areaId: state.areaId,
         playerPosition: state.playerPosition,
         quest: state.quest,
-      } satisfies SaveDataV1)
+        inventory: state.inventory,
+        resourceReadyAt: state.resourceReadyAt,
+        benchRepaired: state.benchRepaired,
+      } satisfies SaveDataV4)
     : clearSave();
   if (state.saveFailed === saved) state.setSaveFailed(!saved);
   return saved;
@@ -24,7 +27,8 @@ export function saveNow(): boolean {
 export function startSaveSync(): () => void {
   const unsubscribe = gameStore.subscribe((state, previous) => {
     if (state.character === previous.character && state.areaId === previous.areaId &&
-      state.playerPosition === previous.playerPosition && state.quest === previous.quest) return;
+      state.playerPosition === previous.playerPosition && state.quest === previous.quest &&
+      state.inventory === previous.inventory && state.resourceReadyAt === previous.resourceReadyAt && state.benchRepaired === previous.benchRepaired) return;
     if (timer) clearTimeout(timer);
     timer = setTimeout(saveNow, 500);
   });

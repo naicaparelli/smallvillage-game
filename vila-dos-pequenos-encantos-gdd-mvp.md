@@ -6,7 +6,7 @@
 **Plataforma inicial:** dispositivos móveis  
 **Perspectiva:** visão elevada com ambientes e construções em composição isométrica/frontal  
 **Direção visual:** pixel art baseada em tiles de 32 px  
-**Status:** conceito definido; protótipo técnico em desenvolvimento (Fase 0 concluída, Fases 1 a 3 implementadas, com validação mobile pendente)
+**Status:** conceito definido; protótipo técnico em desenvolvimento (Fase 0 concluída, Fases 1 a 3 implementadas e fluxo inicial da Fase 4 jogável, com validação mobile pendente)
 
 ### Estado atual do protótipo
 
@@ -17,7 +17,9 @@
 - O exterior e o interior provisórios do ateliê têm porta de entrada/saída, obstáculos e ação contextual por botão ou teclas `E`/`Enter`. Cinco caixas e três teias podem ser removidas; a janela pode ser aberta e libera a inspeção de uma fotografia.
 - O Caderno dos Encantos e o HUD acompanham a primeira missão. A limpeza, a janela e a fotografia avançam objetivos sem contagem duplicada; ao concluir, a bancada ganha brilho.
 - O progresso é salvo localmente: personagem, área, posição e estado da primeira missão retornam após recarregar. Há opção confirmada de novo jogo.
-- A fachada, o piso externo e os objetos interativos agora usam os PNGs enviados. O piso externo atual tem cerca de 3 MB e ainda precisa ser validado em celular. Ainda não há cinemática, crafting ou decoração jogável. O fluxo foi testado automaticamente em Chrome desktop, mas ainda precisa de validação manual em celular.
+- Há música em loop e efeitos para passos, porta, caixas, teias, janela e fotografia. O jogador pode ligar ou desligar todo o áudio, e essa preferência é salva no navegador. Os autores, arquivos originais e links de origem estão em `CREDITOS-AUDIO.md`.
+- O jogador pode coletar madeira antes de concluir a primeira missão. Os cinco pontos são fixos e cada um reaparece 3 minutos após a coleta, com ícone e tempo restante sobre o marcador. A pedra fica disponível após a missão; seus três pontos também reaparecem 3 minutos após a coleta, com a mesma contagem regressiva. Três madeiras e duas pedras reparam a bancada somente depois da missão; mais duas madeiras e uma pedra criam a cadeira. O inventário aparece em uma barra de seis espaços na base da tela, com imagem e quantidade de cada item. A coleta mostra uma notificação compacta no canto inferior esquerdo, acumula itens iguais e desaparece após alguns segundos. O progresso usa save V4, mantendo leitura de V1/V2/V3. Os marcadores são provisórios.
+- A fachada, o piso externo e os objetos interativos agora usam os PNGs enviados. O piso externo atual tem cerca de 3 MB e ainda precisa ser validado em celular. Ainda não há cinemática nem decoração jogável. O crafting inicial está limitado à cadeira. O fluxo foi testado automaticamente em Chrome desktop, mas ainda precisa de validação manual em celular.
 
 ---
 

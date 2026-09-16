@@ -155,7 +155,7 @@ test('mantém a foto visível quando encontrá-la conclui a missão', async ({ p
   await expect(page.locator('.notice-photo')).toBeVisible();
   await expect(page.locator('.notice > span')).toContainText('Uma fotografia antiga');
   await expect(page.locator('.notice > span')).toContainText('a vila nunca perderá completamente sua magia');
-  await expect(page.getByLabel('0 missões pendentes')).toBeVisible();
+  await expect(page.getByLabel('1 missões pendentes')).toBeVisible();
   await page.setViewportSize({ width: 640, height: 360 });
   const photoBox = await page.locator('.notice-photo').boundingBox();
   const noticeBox = await page.locator('.notice').boundingBox();

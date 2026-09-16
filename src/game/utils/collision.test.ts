@@ -23,7 +23,8 @@ describe('activeObstacles', () => {
       windowOpen: true,
     });
     expect(isBlocked(390, 310, 15, cleaned)).toBe(false);
-    expect(isBlocked(780, 190, 15, cleaned)).toBe(true);
+    expect(isBlocked(780, 190, 15, cleaned)).toBe(false);
+    expect(isBlocked(700, 190, 15, cleaned)).toBe(true);
   });
 
   it('aproxima o contato pela parte de cima sem alterar os outros lados', () => {

@@ -4,6 +4,7 @@ type GameEventMap = {
   INTERACTION_REQUESTED: Record<string, never>;
   AREA_ENTERED: { areaId: string };
   OBJECT_CLEANED: { objectId: string; objectType: string };
+  ITEM_COLLECTED: { itemId: 'wood' | 'stone' | 'chair'; amount: number };
   WINDOW_OPENED: Record<string, never>;
   PHOTO_FOUND: Record<string, never>;
   QUEST_UPDATED: { questId: string };

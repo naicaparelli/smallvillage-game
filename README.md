@@ -13,7 +13,7 @@ npm run dev
 
 Abra o endereço exibido pelo Vite. O jogo foi projetado para tela horizontal. Use WASD ou as setas para mover, `E`/`Enter` para interagir e o joystick na tela em dispositivos de toque.
 
-A música e os efeitos começam depois de escolher o personagem ou interagir com um save carregado. O botão no canto superior direito liga ou desliga todo o áudio e salva essa preferência no navegador. Os arquivos e suas licenças CC0 estão em [fontes do áudio](public/assets/audio/SOURCES.md).
+A música e os efeitos começam depois de escolher o personagem ou interagir com um save carregado. O botão no canto superior direito liga ou desliga todo o áudio e salva essa preferência no navegador. Veja os [créditos de áudio](CREDITOS-AUDIO.md) e o [registro dos arquivos originais](public/assets/audio/SOURCES.md).
 
 ## Estado atual
 
@@ -21,9 +21,11 @@ A música e os efeitos começam depois de escolher o personagem ou interagir com
 - Fase 1 (personagem): imagens reais em quatro direções, com pose parada e dois frames de caminhada; falta validar em aparelhos reais.
 - Fase 2 (ateliê e interações): fachada, piso e objetos com assets; interior e colisões ainda provisórios.
 - Fase 3 (primeira missão e salvamento): implementada; progresso salvo localmente no navegador.
-- Fases 4 a 6: ainda não iniciadas.
+- Fase 4 (coleta e crafting): fluxo inicial implementado. A madeira pode ser coletada desde o início no exterior; a pedra fica disponível após a limpeza. A bancada só pode ser reparada após a primeira missão. O jogador pode então fabricar uma cadeira. O inventário aparece em seis espaços na parte inferior, com imagem e quantidade dos itens; coleta usa uma notificação pequena no canto inferior esquerdo, que agrupa itens iguais e desaparece automaticamente. Inventário e progresso são salvos.
+- Fase 5 (decoração): ainda não iniciada; não há posicionamento de móveis.
+- Fase 6 (polimento mobile): parcialmente adiantada pelo áudio; há música, efeitos e um controle persistido no navegador. A validação em aparelhos reais e os ajustes finais continuam pendentes.
 
-O piso externo atual tem cerca de 3 MB; seu carregamento ainda precisa ser validado em celular. O fluxo da missão e do save passou em testes automatizados no Chrome desktop; ainda falta validar em aparelhos Android e iOS reais.
+A Fase 4 usa cinco pontos fixos de madeira e três de pedra; cada ponto reaparece três minutos após a coleta. Durante a espera, um ícone e o tempo restante aparecem sobre o marcador. Os marcadores visuais ainda são provisórios. Saves V1, V2 e V3 são aceitos e passam a V4 no próximo salvamento. Ainda não há cinemática de abertura. O interior e as colisões usam elementos provisórios. O piso externo atual tem cerca de 3 MB; seu carregamento e o áudio ainda precisam ser validados em celular. O fluxo da primeira missão e do save passou em testes automatizados no Chrome desktop; ainda falta validar em aparelhos Android e iOS reais.
 
 ## Verificar
 

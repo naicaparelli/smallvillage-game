@@ -4,8 +4,11 @@ import { PhaserGame } from '../game/PhaserGame';
 import { gameStore } from '../state/gameStore';
 import { characters, type CharacterKind } from '../data/characters';
 import { MobileJoystick } from '../ui/MobileJoystick';
+import { InventoryBar } from '../ui/InventoryBar';
+import { CollectionToasts } from '../ui/CollectionToasts';
 import { eventBus } from '../game/events/EventBus';
 import { firstQuest } from '../data/quests';
+import { repairCost, chairCost } from '../data/crafting';
 import { characterAssetPath } from '../data/assetPaths';
 import { questObjectives } from '../game/systems/questProgress';
 import { isAudioEnabled, pauseMusic, setAudioEnabled, startMusic } from '../audio/audioManager';
@@ -18,6 +21,8 @@ export function App() {
   const [portrait, setPortrait] = useState(isPortrait);
   const character = useStore(gameStore, (state) => state.character);
   const quest = useStore(gameStore, (state) => state.quest);
+  const inventory = useStore(gameStore, (state) => state.inventory);
+  const benchRepaired = useStore(gameStore, (state) => state.benchRepaired);
   const saveCorrupted = useStore(gameStore, (state) => state.saveCorrupted);
   const saveFailed = useStore(gameStore, (state) => state.saveFailed);
   const [action, setAction] = useState<string | null>(null);
@@ -106,7 +111,7 @@ export function App() {
         <div className="quest-hud">
           <button className="missions-toggle" type="button" aria-label="Abrir Caderno dos Encantos" onClick={openJournal}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5z"/><path d="M4 17.5A2.5 2.5 0 0 1 6.5 15H20M8 7h8M8 11h6"/></svg>
-            <span className="missions-count" aria-label={'' + (quest.completed ? 0 : 1) + ' missões pendentes'}>{quest.completed ? 0 : 1}</span>
+            <span className="missions-count" aria-label={'' + (inventory.chair ? 0 : 1) + ' missões pendentes'}>{inventory.chair ? 0 : 1}</span>
           </button>
         </div>
       )}
@@ -123,6 +128,8 @@ export function App() {
         </button>
       )}
       {character && !portrait && <MobileJoystick />}
+      {character && !portrait && <InventoryBar inventory={inventory} />}
+      {character && !portrait && <CollectionToasts />}
       {character && !portrait && !journalOpen && !notice && action && (
         <button className="action-button" aria-label={action} aria-keyshortcuts="E Enter" onClick={() => eventBus.emit('INTERACTION_REQUESTED', {})}>
           <span>{action}</span><kbd className="action-shortcut" aria-hidden="true">E</kbd>
@@ -154,6 +161,17 @@ export function App() {
                 <ul>{objectives.map((objective) => <li key={objective.label}>{objective.label}: {objective.current}/{objective.total}</li>)}</ul>
               </div>
             </div>
+            <p className="inventory-summary">Materiais: madeira {inventory.wood} · pedra {inventory.stone}</p>
+            {quest.completed && <div className="journal-mission phase-four">
+              <h3>A mesa quebrada</h3>
+              <p>{!benchRepaired ? 'Colete materiais no exterior e repare a bancada.' : inventory.chair ? 'Concluída! A cadeira está no inventário.' : 'Use a bancada para criar a primeira cadeira.'}</p>
+              <ul>
+                <li>Madeira: {inventory.wood} (reparo: {repairCost.wood}; cadeira: {chairCost.wood})</li>
+                <li>Pedra: {inventory.stone} (reparo: {repairCost.stone}; cadeira: {chairCost.stone})</li>
+                <li>Bancada: {benchRepaired ? 'reparada' : 'quebrada'}</li>
+                <li>Cadeira: {inventory.chair}</li>
+              </ul>
+            </div>}
             <button className="new-game-button" onClick={() => {
               if (!window.confirm('Apagar o progresso e começar um novo jogo?')) return;
               setJournalOpen(false);
