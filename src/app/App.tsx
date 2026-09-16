@@ -8,6 +8,7 @@ import { eventBus } from '../game/events/EventBus';
 import { firstQuest } from '../data/quests';
 import { characterAssetPath } from '../data/assetPaths';
 import { questObjectives } from '../game/systems/questProgress';
+import { isAudioEnabled, pauseMusic, setAudioEnabled, startMusic } from '../audio/audioManager';
 
 function isPortrait(): boolean {
   return window.innerHeight > window.innerWidth;
@@ -24,6 +25,7 @@ export function App() {
   const [journalOpen, setJournalOpen] = useState(false);
   const [missionDetailsOpen, setMissionDetailsOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const [audioEnabled, setAudioEnabledState] = useState(isAudioEnabled);
   const objectives = questObjectives(quest);
   const currentObjective = objectives.find((objective) => objective.current < objective.total);
   const openJournal = () => {
@@ -38,6 +40,18 @@ export function App() {
     const offNotice = eventBus.on('NOTICE', (payload) => setNotice(payload));
     return () => { offReady(); offAction(); offNotice(); };
   }, []);
+
+  useEffect(() => {
+    if (!character) { pauseMusic(); return; }
+    startMusic();
+    const resume = () => startMusic();
+    window.addEventListener('pointerdown', resume, true);
+    window.addEventListener('keydown', resume, true);
+    return () => {
+      window.removeEventListener('pointerdown', resume, true);
+      window.removeEventListener('keydown', resume, true);
+    };
+  }, [character]);
 
   useEffect(() => {
     const update = () => setPortrait(isPortrait());
@@ -79,7 +93,7 @@ export function App() {
           {saveCorrupted && <p role="alert">O progresso anterior não pôde ser lido. Uma cópia foi preservada; comece um novo jogo.</p>}
           <div className="character-options">
             {(Object.keys(characters) as CharacterKind[]).map((kind) => (
-              <button className="character-card" key={kind} onClick={() => gameStore.getState().selectCharacter(kind)}>
+              <button className="character-card" key={kind} onClick={() => { startMusic(); gameStore.getState().selectCharacter(kind); }}>
                 <img className="character-preview" src={characterAssetPath(kind, 'front', 0)} alt="" />
                 <span>{characters[kind].name}</span>
               </button>
@@ -95,6 +109,18 @@ export function App() {
             <span className="missions-count" aria-label={'' + (quest.completed ? 0 : 1) + ' missões pendentes'}>{quest.completed ? 0 : 1}</span>
           </button>
         </div>
+      )}
+      {character && !portrait && (
+        <button className="audio-toggle" type="button" aria-label={audioEnabled ? 'Desativar áudio' : 'Ativar áudio'} aria-pressed={audioEnabled} onClick={() => {
+          const next = !audioEnabled;
+          setAudioEnabled(next);
+          setAudioEnabledState(next);
+        }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 9v6h4l5 4V5L8 9H4z" />
+            {audioEnabled ? <path d="M17 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12" /> : <path d="M17 8l5 8M22 8l-5 8" />}
+          </svg>
+        </button>
       )}
       {character && !portrait && <MobileJoystick />}
       {character && !portrait && !journalOpen && !notice && action && (

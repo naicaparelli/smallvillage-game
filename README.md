@@ -13,6 +13,8 @@ npm run dev
 
 Abra o endereço exibido pelo Vite. O jogo foi projetado para tela horizontal. Use WASD ou as setas para mover, `E`/`Enter` para interagir e o joystick na tela em dispositivos de toque.
 
+A música e os efeitos começam depois de escolher o personagem ou interagir com um save carregado. O botão no canto superior direito liga ou desliga todo o áudio e salva essa preferência no navegador. Os arquivos e suas licenças CC0 estão em [fontes do áudio](public/assets/audio/SOURCES.md).
+
 ## Estado atual
 
 - Fase 0 (fundação): implementada.

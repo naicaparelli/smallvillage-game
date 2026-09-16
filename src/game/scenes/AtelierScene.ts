@@ -11,6 +11,7 @@ import { cardinalDirection } from '../input/cardinalDirection';
 import { cameraBounds } from '../utils/cameraBounds';
 import { activeObstacles, isBlocked, nearestOpenPoint } from '../utils/collision';
 import { firstQuest } from '../../data/quests';
+import { playEffect } from '../../audio/audioManager';
 
 const SPEED = 90;
 const INTERACTION_RADIUS = 105;
@@ -33,6 +34,8 @@ export class AtelierScene extends Phaser.Scene {
   private transitioning = false;
   private walkTime = 0;
   private wasMoving = false;
+  private footstepElapsed = 300;
+  private footstepIndex = 0;
 
   constructor() {
     super('atelier');
@@ -111,6 +114,8 @@ export class AtelierScene extends Phaser.Scene {
 
     this.facing = 'front';
     this.walkTime = 0;
+    this.footstepElapsed = 300;
+    this.footstepIndex = 0;
     this.playerSprite = this.add.image(0, 0, characterTextureKey(this.characterKind, this.facing, 0))
       .setOrigin(0.5, 1)
       .setDisplaySize(PLAYER_WIDTH, PLAYER_HEIGHT);
@@ -171,6 +176,7 @@ export class AtelierScene extends Phaser.Scene {
     const object = this.availableObject();
     if (!object) return;
     if (object.kind === 'door') {
+      playEffect('door');
       this.transitioning = true;
       this.refreshInteraction();
       this.cameras.main.fadeOut(180, 0, 0, 0);
@@ -185,15 +191,18 @@ export class AtelierScene extends Phaser.Scene {
       return;
     }
     if (object.kind === 'box' || object.kind === 'cobweb') {
+      playEffect(object.kind === 'box' ? 'box' : 'web');
       this.objectSprites.get(object.id)?.destroy();
       this.objectSprites.delete(object.id);
       eventBus.emit('OBJECT_CLEANED', { objectId: object.id, objectType: object.kind });
     } else if (object.kind === 'window') {
+      playEffect('window');
       eventBus.emit('WINDOW_OPENED', {});
       this.objectSprites.get(object.id)?.setTexture('windowOpen');
       const photo = areas['atelier-interior'].objects.find((item) => item.kind === 'photograph');
       if (photo) this.objectSprites.set(photo.id, this.add.image(photo.x, photo.y, 'photo').setDepth(photo.y));
     } else {
+      playEffect('photo');
       eventBus.emit('PHOTO_FOUND', {});
       const photoText = 'Uma fotografia antiga mostra o ateliê e a praça cheios de vida.';
       const text = gameStore.getState().quest.completed
@@ -219,6 +228,7 @@ export class AtelierScene extends Phaser.Scene {
       if (this.wasMoving) this.syncPosition();
       this.wasMoving = false;
       this.walkTime = 0;
+      this.footstepElapsed = 300;
       this.showFrame(0);
       this.refreshInteraction();
       return;
@@ -229,9 +239,24 @@ export class AtelierScene extends Phaser.Scene {
     const distance = SPEED * Math.min(delta, 50) / 1000;
     const nextX = Phaser.Math.Clamp(this.player.x + direction.x * distance, 16, area.width - 16);
     const nextY = Phaser.Math.Clamp(this.player.y + direction.y * distance, 8, area.height - 8);
+    const previousX = this.player.x;
+    const previousY = this.player.y;
     const obstacles = activeObstacles(this.areaId, gameStore.getState().quest);
     if (!isBlocked(nextX, this.player.y, 15, obstacles)) this.player.x = nextX;
     if (!isBlocked(this.player.x, nextY, 15, obstacles)) this.player.y = nextY;
+    if (this.player.x !== previousX || this.player.y !== previousY) {
+      this.footstepElapsed += delta;
+      if (this.footstepElapsed >= 300) {
+        const inside = this.areaId === 'atelier-interior';
+        playEffect(inside
+          ? (this.footstepIndex % 2 ? 'stepInside2' : 'stepInside1')
+          : (this.footstepIndex % 2 ? 'stepOutside2' : 'stepOutside1'));
+        this.footstepIndex++;
+        this.footstepElapsed = 0;
+      }
+    } else {
+      this.footstepElapsed = 300;
+    }
     this.player.setDepth(this.player.y);
     this.walkTime += delta;
     this.showFrame(Math.floor(this.walkTime / WALK_FRAME_MS) % 2 as 0 | 1);

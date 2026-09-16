@@ -27,6 +27,9 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; over
 .missions-toggle { position: relative; display: grid; place-items: center; width: 54px; height: 54px; border: 2px solid #d5b7d3; border-radius: 14px; background: #423749ee; color: #fff8ec; cursor: pointer; }
 .missions-toggle svg { width: 29px; height: 29px; }
 .missions-toggle:hover, .missions-toggle:focus-visible { background: #59465e; outline-offset: 3px; }
+.audio-toggle { position: absolute; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); z-index: 4; display: grid; place-items: center; width: 54px; height: 54px; border: 2px solid #d5b7d3; border-radius: 14px; background: #423749ee; color: #fff8ec; cursor: pointer; }
+.audio-toggle svg { width: 28px; height: 28px; }
+.audio-toggle:hover, .audio-toggle:focus-visible { background: #59465e; outline-offset: 3px; }
 .missions-count { position: absolute; top: -9px; right: -10px; display: grid; place-items: center; min-width: 25px; height: 25px; padding: 0 5px; border: 2px solid #25212f; border-radius: 99px; background: #f4dca8; color: #25212f; font: 700 13px system-ui, sans-serif; }
 .journal-backdrop { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: #17131dbb; }
 .journal { position: relative; width: min(520px, 100%); max-height: 90dvh; overflow: auto; padding: 24px; border: 3px solid #d5b7d3; border-radius: 18px; background: #423749; }
@@ -44,7 +47,7 @@ html, body, #root { width: 100%; height: 100%; margin: 0; overflow: hidden; over
 .mission-details ul { margin-bottom: 0; }
 .journal-close { display: none; position: absolute; top: 12px; right: 14px; width: 44px; height: 44px; border: 0; background: transparent; color: #fff8ec; font-size: 30px; cursor: pointer; }
 .new-game-button { min-height: 44px; padding: 8px 14px; border: 1px solid #e2c9df; border-radius: 8px; background: #59465e; color: #fff8ec; cursor: pointer; }
-.save-warning { position: absolute; top: max(16px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); max-width: 260px; padding: 10px; border-radius: 8px; background: #6b3030; }
+.save-warning { position: absolute; top: max(80px, calc(env(safe-area-inset-top, 0px) + 64px)); right: max(16px, env(safe-area-inset-right, 0px)); max-width: 260px; padding: 10px; border-radius: 8px; background: #6b3030; }
 .loading-screen { position: absolute; inset: 0; display: grid; place-items: center; background: #25212f; color: #fff8ec; font-size: 20px; }
 .action-shortcut { display: inline-grid; place-items: center; min-width: 28px; height: 28px; margin-left: 10px; padding: 0 5px; border: 1px solid #fff8ec; border-radius: 6px; background: #fff8ec22; font: 700 15px system-ui, sans-serif; }
 .notice { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: min(90vw, 280px); z-index: 3; }
