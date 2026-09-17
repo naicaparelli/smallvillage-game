@@ -1,10 +1,19 @@
 type GameEventMap = {
   PLAYER_READY: { sceneId: string };
   INTERACTION_AVAILABLE: { label: string | null };
+  INTERACTION_POSITION: { x: number; y: number };
   INTERACTION_REQUESTED: Record<string, never>;
   AREA_ENTERED: { areaId: string };
   OBJECT_CLEANED: { objectId: string; objectType: string };
   ITEM_COLLECTED: { itemId: 'wood' | 'stone' | 'chair'; amount: number };
+  DECORATION_START: { moveExisting: boolean };
+  DECORATION_EDIT_REQUESTED: Record<string, never>;
+  DECORATION_MOVE: { dx: number; dy: number };
+  DECORATION_CONFIRM: Record<string, never>;
+  DECORATION_CANCEL: Record<string, never>;
+  DECORATION_STORE: Record<string, never>;
+  DECORATION_PREVIEW: { valid: boolean; x: number; y: number };
+  DECORATION_FINISHED: Record<string, never>;
   WINDOW_OPENED: Record<string, never>;
   PHOTO_FOUND: Record<string, never>;
   QUEST_UPDATED: { questId: string };

@@ -1,5 +1,5 @@
 export type AreaId = 'atelier-exterior' | 'atelier-interior';
-export type ObjectKind = 'door' | 'box' | 'cobweb' | 'window' | 'photograph' | 'resource' | 'bench';
+export type ObjectKind = 'door' | 'box' | 'cobweb' | 'window' | 'photograph' | 'resource' | 'bench' | 'chair';
 
 export type AreaObject = {
   id: string;

@@ -12,7 +12,7 @@ export function PhaserGame() {
       parent: host.current,
       width: host.current.clientWidth,
       height: host.current.clientHeight,
-      backgroundColor: '#25212f',
+      backgroundColor: '#000000',
       pixelArt: true,
       roundPixels: true,
       scale: { mode: Phaser.Scale.RESIZE },

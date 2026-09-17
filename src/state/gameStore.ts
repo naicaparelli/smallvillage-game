@@ -5,8 +5,9 @@ import type { CharacterKind } from '../data/characters';
 import { initialQuestProgress, type QuestProgress } from '../game/systems/questProgress';
 import { loadSave } from '../save/saveService';
 import { resourceIsReady, resourceReadyAtAfterCollection } from '../game/systems/resourceRespawn';
+import { canPlaceChair, type ChairPlacement } from '../game/systems/decoration';
 
-export type GameMode = 'menu' | 'explore' | 'paused';
+export type GameMode = 'menu' | 'explore' | 'decorating' | 'paused';
 
 type GameState = {
   mode: GameMode;
@@ -17,6 +18,10 @@ type GameState = {
   inventory: Inventory;
   resourceReadyAt: Record<string, number>;
   benchRepaired: boolean;
+  placedChair: ChairPlacement | null;
+  placeChair: (position: ChairPlacement) => boolean;
+  moveChair: (position: ChairPlacement) => boolean;
+  storeChair: () => boolean;
   collectResource: (id: string, resource: ResourceId, now?: number) => boolean;
   repairBench: () => boolean;
   craftChair: () => boolean;
@@ -40,18 +45,36 @@ export const gameStore = createStore<GameState>((set) => ({
   playerPosition: loaded.data?.playerPosition ?? { ...areas['atelier-exterior'].spawn },
   quest: loaded.data?.quest ?? initialQuestProgress,
   inventory: loaded.data && "inventory" in loaded.data ? loaded.data.inventory : { ...initialInventory },
-  resourceReadyAt: loaded.data?.version === 4 ? loaded.data.resourceReadyAt : loaded.data?.version === 3
+  resourceReadyAt: loaded.data?.version === 4 || loaded.data?.version === 5 ? loaded.data.resourceReadyAt : loaded.data?.version === 3
     ? { ...loaded.data.woodReadyAt, ...Object.fromEntries(loaded.data.collectedResourceIds.filter((id) => id.startsWith('stone-')).map((id) => [id, Date.parse(loaded.data!.updatedAt) + 180000])) }
     : loaded.data?.version === 2
       ? Object.fromEntries(loaded.data.collectedResourceIds.map((id) => [id, Date.parse(loaded.data!.updatedAt) + 180000])) : {},
   benchRepaired: loaded.data && "benchRepaired" in loaded.data ? loaded.data.benchRepaired : false,
+  placedChair: loaded.data?.version === 5 ? loaded.data.placedChair : null,
   saveCorrupted: loaded.corrupted,
   saveFailed: false,
+  placeChair: (position) => {
+    const state = gameStore.getState();
+    if (state.areaId !== 'atelier-interior' || !state.benchRepaired || state.inventory.chair < 1 || state.placedChair || !canPlaceChair(position, state.quest, state.playerPosition)) return false;
+    set({ placedChair: { ...position }, inventory: { ...state.inventory, chair: state.inventory.chair - 1 } });
+    return true;
+  },
+  moveChair: (position) => {
+    const state = gameStore.getState();
+    if (state.areaId !== 'atelier-interior' || !state.placedChair || !canPlaceChair(position, state.quest, state.playerPosition)) return false;
+    set({ placedChair: { ...position } });
+    return true;
+  },
+  storeChair: () => {
+    const state = gameStore.getState();
+    if (!state.placedChair) return false;
+    set({ placedChair: null, inventory: { ...state.inventory, chair: state.inventory.chair + 1 } });
+    return true;
+  },
   collectResource: (id, resource, now = Date.now()) => {
     const state = gameStore.getState();
     const object = areas['atelier-exterior'].objects.find((item) => item.id === id);
     if (object?.kind !== 'resource' || object.resource !== resource) return false;
-    if (resource === 'stone' && !state.quest.completed) return false;
     if (!resourceIsReady(state.resourceReadyAt[id], now)) return false;
     set({
       resourceReadyAt: { ...state.resourceReadyAt, [id]: resourceReadyAtAfterCollection(now) },
@@ -67,7 +90,7 @@ export const gameStore = createStore<GameState>((set) => ({
   },
   craftChair: () => {
     const state = gameStore.getState();
-    if (!state.benchRepaired || state.inventory.chair > 0 || state.inventory.wood < chairCost.wood || state.inventory.stone < chairCost.stone) return false;
+    if (!state.benchRepaired || state.inventory.chair > 0 || state.placedChair || state.inventory.wood < chairCost.wood || state.inventory.stone < chairCost.stone) return false;
     set({ inventory: { wood: state.inventory.wood - chairCost.wood, stone: state.inventory.stone - chairCost.stone, chair: 1 } });
     return true;
   },
@@ -82,6 +105,6 @@ export const gameStore = createStore<GameState>((set) => ({
   resetGame: () => set({
     mode: 'menu', character: null, areaId: 'atelier-exterior',
     playerPosition: { ...areas['atelier-exterior'].spawn },
-    quest: initialQuestProgress, inventory: { ...initialInventory }, resourceReadyAt: {}, benchRepaired: false, saveCorrupted: false, saveFailed: false,
+    quest: initialQuestProgress, inventory: { ...initialInventory }, resourceReadyAt: {}, benchRepaired: false, placedChair: null, saveCorrupted: false, saveFailed: false,
   }),
 }));

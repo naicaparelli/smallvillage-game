@@ -39,7 +39,7 @@ test('coleta madeira antes da primeira missão e preserva o temporizador', async
   await page.getByRole('button', { name: 'Abrir Caderno dos Encantos' }).click();
   await expect(page.getByRole('dialog')).toContainText('Materiais: madeira 2');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('little-enchantments:save:v1') || '{}'));
-  expect(saved.version).toBe(4);
+  expect(saved.version).toBe(5);
   expect(saved.resourceReadyAt['wood-0']).toBeGreaterThan(Date.now());
 });
 
@@ -72,9 +72,9 @@ test('repara bancada, fabrica cadeira e salva o resultado', async ({ page }) => 
   await expect(page.getByText('Bancada reparada! Agora você pode criar uma cadeira.')).toBeVisible();
   await page.keyboard.press('e');
   await page.getByRole('button', { name: 'Usar bancada' }).click();
-  await expect(page.getByText('Cadeira criada! Veja seu inventário no Caderno dos Encantos.')).toBeVisible();
+  await expect(page.getByText('Cadeira criada! Selecione-a no invent\u00e1rio para posicionar.')).toBeVisible();
   await page.reload();
   await page.getByRole('button', { name: 'Abrir Caderno dos Encantos' }).click();
-  await expect(page.getByRole('dialog')).toContainText('Cadeira: 1');
+  await expect(page.getByRole('dialog')).toContainText('Cadeira: no inventário');
   await expect(page.getByRole('dialog')).toContainText('Bancada: reparada');
 });

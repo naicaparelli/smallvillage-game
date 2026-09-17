@@ -14,6 +14,7 @@ import { firstQuest } from '../../data/quests';
 import { playEffect } from '../../audio/audioManager';
 import { repairCost, chairCost } from '../../data/crafting';
 import { remainingTimeLabel, resourceIsReady } from '../systems/resourceRespawn';
+import { canPlaceChair, chairObstacle, snapChairPosition, type ChairPlacement } from '../systems/decoration';
 
 const SPEED = 90;
 const INTERACTION_RADIUS = 105;
@@ -30,6 +31,12 @@ export class AtelierScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
   private actionKeys!: Record<'E' | 'ENTER', Phaser.Input.Keyboard.Key>;
+  private escapeKey!: Phaser.Input.Keyboard.Key;
+  private previewChair: Phaser.GameObjects.Container | null = null;
+  private previewOutline: Phaser.GameObjects.Rectangle | null = null;
+  private placedChairSprite: Phaser.GameObjects.Container | null = null;
+  private previewPosition: ChairPlacement | null = null;
+  private movingChair = false;
   private objectSprites = new Map<string, Phaser.GameObjects.Image>();
   private benchGlow: Phaser.GameObjects.Rectangle | null = null;
   private resourceMarkers = new Map<string, { marker: Phaser.GameObjects.Rectangle; countdown: Phaser.GameObjects.Text }>();
@@ -64,18 +71,30 @@ export class AtelierScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = this.input.keyboard!.addKeys('W,A,S,D') as typeof this.wasd;
     this.actionKeys = this.input.keyboard!.addKeys('E,ENTER') as typeof this.actionKeys;
-    this.cameras.main.setBackgroundColor('#455648');
+    this.escapeKey = this.input.keyboard!.addKey('ESC');
+    this.cameras.main.setBackgroundColor('#000000');
     this.cameras.main.roundPixels = true;
     this.areaId = gameStore.getState().areaId;
     this.scale.on(Phaser.Scale.Events.RESIZE, this.updateCameraBounds, this);
     const unsubscribe = eventBus.on('INTERACTION_REQUESTED', () => this.interact());
     const offSync = eventBus.on('SYNC_POSITION', () => this.syncPosition());
+    const offDecorateStart = eventBus.on('DECORATION_START', ({ moveExisting }) => this.beginDecoration(moveExisting));
+    const offDecorateMove = eventBus.on('DECORATION_MOVE', ({ dx, dy }) => this.movePreview(dx, dy));
+    const offDecorateConfirm = eventBus.on('DECORATION_CONFIRM', () => this.confirmDecoration());
+    const offDecorateCancel = eventBus.on('DECORATION_CANCEL', () => this.finishDecoration());
+    const offDecorateStore = eventBus.on('DECORATION_STORE', () => this.storeDecoration());
+    const onPointerDown = (pointer: Phaser.Input.Pointer) => {
+      if (gameStore.getState().mode === 'decorating' && this.previewChair) this.setPreview({ x: pointer.worldX, y: pointer.worldY });
+    };
+    this.input.on('pointerdown', onPointerDown);
     const offQuest = eventBus.on('QUEST_UPDATED', () => {
       if (gameStore.getState().quest.completed) this.benchGlow?.setAlpha(0.7);
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.updateCameraBounds, this);
       unsubscribe(); offSync(); offQuest();
+      offDecorateStart(); offDecorateMove(); offDecorateConfirm(); offDecorateCancel(); offDecorateStore();
+      this.input.off('pointerdown', onPointerDown);
     });
 
     this.drawArea();
@@ -88,6 +107,10 @@ export class AtelierScene extends Phaser.Scene {
     this.cameras.main.stopFollow();
     this.children.removeAll(true);
     this.objectSprites.clear();
+    this.previewChair = null;
+    this.previewOutline = null;
+    this.previewPosition = null;
+    this.placedChairSprite = null;
     this.resourceMarkers.clear();
     this.lastTimerSecond = -1;
     this.benchGlow = null;
@@ -125,6 +148,10 @@ export class AtelierScene extends Phaser.Scene {
     }
 
     this.updateResourceMarkers(Date.now());
+    if (this.areaId === 'atelier-interior' && gameStore.getState().placedChair) {
+      const placed = gameStore.getState().placedChair!;
+      this.placedChairSprite = this.drawChair(placed.x, placed.y);
+    }
     this.facing = 'front';
     this.walkTime = 0;
     this.footstepElapsed = 300;
@@ -136,7 +163,7 @@ export class AtelierScene extends Phaser.Scene {
     const bounds = this.areaId === 'atelier-interior'
       ? { minX: 80, maxX: 1320, minY: 140, maxY: 840 }
       : { minX: 16, maxX: area.width - 16, minY: 8, maxY: area.height - 8 };
-    const position = nearestOpenPoint(savedPosition, 15, activeObstacles(this.areaId, quest), bounds);
+    const position = nearestOpenPoint(savedPosition, 15, [...activeObstacles(this.areaId, quest), ...chairObstacle(this.areaId === 'atelier-interior' ? gameStore.getState().placedChair : null)], bounds);
     if (position.x !== savedPosition.x || position.y !== savedPosition.y) gameStore.getState().setPosition(position);
     this.player = this.add.container(position.x, position.y, [this.playerSprite]);
     this.player.setDepth(this.player.y);
@@ -163,7 +190,6 @@ export class AtelierScene extends Phaser.Scene {
     const objects = areas[this.areaId].objects.filter((object) => {
       const quest = gameStore.getState().quest;
       if (quest.cleanedObjectIds.includes(object.id)) return false;
-      if (object.resource === 'stone' && !quest.completed) return false;
       if (object.kind === 'resource' && !resourceIsReady(gameStore.getState().resourceReadyAt[object.id], Date.now())) return false;
       if (object.kind === 'bench' && !quest.completed) return false;
       if (object.kind === 'photograph' && !quest.windowOpen) return false;
@@ -171,6 +197,10 @@ export class AtelierScene extends Phaser.Scene {
       if (object.kind === 'photograph' && quest.photoFound) return false;
       return Phaser.Math.Distance.Between(this.player.x, this.player.y, object.x, object.y) <= INTERACTION_RADIUS;
     });
+    const chair = this.areaId === 'atelier-interior' ? gameStore.getState().placedChair : null;
+    if (chair && !window.matchMedia('(pointer: coarse)').matches && Phaser.Math.Distance.Between(this.player.x, this.player.y, chair.x, chair.y) <= INTERACTION_RADIUS) {
+      objects.push({ id: 'placed-chair', kind: 'chair', x: chair.x, y: chair.y, label: 'Editar cadeira' });
+    }
     objects.sort((a, b) =>
       Phaser.Math.Distance.Between(this.player.x, this.player.y, a.x, a.y) -
       Phaser.Math.Distance.Between(this.player.x, this.player.y, b.x, b.y),
@@ -180,6 +210,13 @@ export class AtelierScene extends Phaser.Scene {
 
   private refreshInteraction(): void {
     const object = this.availableObject();
+    if (object) {
+      const camera = this.cameras.main;
+      eventBus.emit('INTERACTION_POSITION', {
+        x: camera.x + (object.x - camera.scrollX) * camera.zoom,
+        y: camera.y + (object.y - 48 - camera.scrollY) * camera.zoom,
+      });
+    }
     if (object?.id === this.nearestId) return;
     if (this.nearestId && !this.nearestId.startsWith('wood-') && !this.nearestId.startsWith('stone-')) this.objectSprites.get(this.nearestId)?.clearTint();
     this.nearestId = object?.id ?? null;
@@ -206,6 +243,10 @@ export class AtelierScene extends Phaser.Scene {
       });
       return;
     }
+    if (object.kind === 'chair') {
+      eventBus.emit('DECORATION_EDIT_REQUESTED', {});
+      return;
+    }
     if (object.kind === 'resource' && object.resource) {
       if (!gameStore.getState().collectResource(object.id, object.resource)) return;
       this.updateResourceMarkers(Date.now());
@@ -218,9 +259,10 @@ export class AtelierScene extends Phaser.Scene {
           eventBus.emit('NOTICE', { text: 'Bancada reparada! Agora você pode criar uma cadeira.' });
           eventBus.emit('SAVE_REQUESTED', { reason: 'bench-repaired' });
         } else eventBus.emit('NOTICE', { text: `Para reparar: ${repairCost.wood} madeiras e ${repairCost.stone} pedras. Você tem ${state.inventory.wood} e ${state.inventory.stone}.` });
-      } else if (state.inventory.chair) eventBus.emit('NOTICE', { text: 'A cadeira está pronta no inventário. A decoração vem na próxima fase.' });
+      } else if (state.placedChair) eventBus.emit('NOTICE', { text: 'A cadeira está no ateliê. Use Editar cadeira para movê-la ou guardá-la.' });
+      else if (state.inventory.chair) eventBus.emit('NOTICE', { text: 'A cadeira está pronta. Selecione-a no inventário para posicionar.' });
       else if (state.craftChair()) {
-        eventBus.emit('NOTICE', { text: 'Cadeira criada! Veja seu inventário no Caderno dos Encantos.' });
+        eventBus.emit('NOTICE', { text: 'Cadeira criada! Selecione-a no inventário para posicionar.' });
         eventBus.emit('SAVE_REQUESTED', { reason: 'chair-crafted' });
       } else eventBus.emit('NOTICE', { text: `Para criar a cadeira: ${chairCost.wood} madeiras e ${chairCost.stone} pedra. Você tem ${state.inventory.wood} e ${state.inventory.stone}.` });
     } else if (object.kind === 'box' || object.kind === 'cobweb') {
@@ -258,6 +300,87 @@ export class AtelierScene extends Phaser.Scene {
     }
   }
 
+  private drawChair(x: number, y: number, preview = false): Phaser.GameObjects.Container {
+    const outline = preview ? this.add.rectangle(0, -18, 56, 62, 0xffd76b, 0.12).setStrokeStyle(3, 0xffd76b) : null;
+    const parts = [
+      this.add.rectangle(-13, 6, 6, 18, 0x4b3440),
+      this.add.rectangle(13, 6, 6, 18, 0x4b3440),
+      this.add.rectangle(0, -27, 32, 30, 0xa36c48).setStrokeStyle(3, 0x4b3440),
+      this.add.rectangle(0, -9, 42, 13, 0xbb8058).setStrokeStyle(3, 0x4b3440),
+    ];
+    const container = this.add.container(x, y, outline ? [outline, ...parts] : parts).setDepth(y);
+    if (preview) {
+      container.setAlpha(0.75);
+      this.previewOutline = outline;
+    } else if (window.matchMedia('(pointer: coarse)').matches) {
+      container.setInteractive(new Phaser.Geom.Rectangle(-28, -49, 56, 62), Phaser.Geom.Rectangle.Contains);
+      container.input!.cursor = 'pointer';
+      container.on('pointerdown', () => eventBus.emit('DECORATION_EDIT_REQUESTED', {}));
+    }
+    return container;
+  }
+
+  private beginDecoration(moveExisting: boolean): void {
+    const state = gameStore.getState();
+    if (this.areaId !== 'atelier-interior' || this.previewChair || (moveExisting ? !state.placedChair : state.inventory.chair < 1)) return;
+    this.syncPosition();
+    this.movingChair = moveExisting;
+    const candidates = moveExisting && state.placedChair ? [state.placedChair] : [
+      { x: this.player.x, y: this.player.y - 100 },
+      { x: this.player.x - 100, y: this.player.y },
+      { x: this.player.x + 100, y: this.player.y },
+      { x: 720, y: 600 },
+    ];
+    const snapped = candidates.map(snapChairPosition);
+    const initial = snapped.find((position) => canPlaceChair(position, state.quest, { x: this.player.x, y: this.player.y })) ?? snapped[0];
+    this.previewChair = this.drawChair(initial.x, initial.y, true);
+    if (moveExisting) this.placedChairSprite?.setVisible(false);
+    this.setPreview(initial);
+  }
+
+  private setPreview(position: ChairPlacement): void {
+    if (!this.previewChair) return;
+    const snapped = snapChairPosition(position);
+    const valid = canPlaceChair(snapped, gameStore.getState().quest, { x: this.player.x, y: this.player.y });
+    this.previewPosition = snapped;
+    this.previewChair.setPosition(snapped.x, snapped.y).setDepth(snapped.y);
+    this.previewOutline?.setStrokeStyle(3, valid ? 0xffd76b : 0xf29b91);
+    eventBus.emit('DECORATION_PREVIEW', { valid, x: snapped.x, y: snapped.y });
+  }
+
+  private movePreview(dx: number, dy: number): void {
+    if (!this.previewPosition) return;
+    this.setPreview({ x: this.previewPosition.x + dx * 40, y: this.previewPosition.y + dy * 40 });
+  }
+
+  private confirmDecoration(): void {
+    if (!this.previewPosition || !canPlaceChair(this.previewPosition, gameStore.getState().quest, { x: this.player.x, y: this.player.y })) return;
+    const placed = this.movingChair
+      ? gameStore.getState().moveChair(this.previewPosition)
+      : gameStore.getState().placeChair(this.previewPosition);
+    if (!placed) return;
+    this.placedChairSprite?.destroy();
+    this.placedChairSprite = this.drawChair(this.previewPosition.x, this.previewPosition.y);
+    eventBus.emit('SAVE_REQUESTED', { reason: 'chair-placed' });
+    this.finishDecoration();
+  }
+
+  private storeDecoration(): void {
+    if (!this.movingChair || !gameStore.getState().storeChair()) return;
+    this.placedChairSprite?.destroy();
+    this.placedChairSprite = null;
+    eventBus.emit('SAVE_REQUESTED', { reason: 'chair-stored' });
+    this.finishDecoration();
+  }
+
+  private finishDecoration(): void {
+    this.previewChair?.destroy();
+    this.previewChair = null;
+    this.previewOutline = null;
+    this.previewPosition = null;
+    this.placedChairSprite?.setVisible(true);
+    eventBus.emit('DECORATION_FINISHED', {});
+  }
   private showFrame(step: 0 | 1): void {
     const key = characterTextureKey(this.characterKind, this.facing, step);
     if (this.playerSprite.texture.key !== key) this.playerSprite.setTexture(key);
@@ -268,6 +391,15 @@ export class AtelierScene extends Phaser.Scene {
     if (second !== this.lastTimerSecond) {
       this.lastTimerSecond = second;
       this.updateResourceMarkers(Date.now());
+    }
+    if (gameStore.getState().mode === 'decorating') {
+      if (Phaser.Input.Keyboard.JustDown(this.cursors.left) || Phaser.Input.Keyboard.JustDown(this.wasd.A)) this.movePreview(-1, 0);
+      if (Phaser.Input.Keyboard.JustDown(this.cursors.right) || Phaser.Input.Keyboard.JustDown(this.wasd.D)) this.movePreview(1, 0);
+      if (Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.wasd.W)) this.movePreview(0, -1);
+      if (Phaser.Input.Keyboard.JustDown(this.cursors.down) || Phaser.Input.Keyboard.JustDown(this.wasd.S)) this.movePreview(0, 1);
+      if (Phaser.Input.Keyboard.JustDown(this.actionKeys.E) || Phaser.Input.Keyboard.JustDown(this.actionKeys.ENTER)) this.confirmDecoration();
+      if (Phaser.Input.Keyboard.JustDown(this.escapeKey)) this.finishDecoration();
+      return;
     }
     if (gameStore.getState().mode !== 'explore' || this.transitioning) return;
     if (Phaser.Input.Keyboard.JustDown(this.actionKeys.E) || Phaser.Input.Keyboard.JustDown(this.actionKeys.ENTER)) this.interact();
@@ -291,7 +423,7 @@ export class AtelierScene extends Phaser.Scene {
     const nextY = Phaser.Math.Clamp(this.player.y + direction.y * distance, 8, area.height - 8);
     const previousX = this.player.x;
     const previousY = this.player.y;
-    const obstacles = activeObstacles(this.areaId, gameStore.getState().quest);
+    const obstacles = [...activeObstacles(this.areaId, gameStore.getState().quest), ...chairObstacle(this.areaId === 'atelier-interior' ? gameStore.getState().placedChair : null)];
     if (!isBlocked(nextX, this.player.y, 15, obstacles)) this.player.x = nextX;
     if (!isBlocked(this.player.x, nextY, 15, obstacles)) this.player.y = nextY;
     if (this.player.x !== previousX || this.player.y !== previousY) {

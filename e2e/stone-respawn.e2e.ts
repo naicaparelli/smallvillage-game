@@ -26,7 +26,7 @@ test('pedra permanece no ponto com temporizador após coleta e recarga', async (
   await page.reload();
   await expect(page.getByRole('button', { name: 'Coletar pedra' })).toBeHidden();
   const save = await page.evaluate(() => JSON.parse(localStorage.getItem('little-enchantments:save:v1') || '{}'));
-  expect(save.version).toBe(4);
+  expect(save.version).toBe(5);
   expect(save.resourceReadyAt['stone-0']).toBeGreaterThan(Date.now());
 });
 

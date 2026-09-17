@@ -28,11 +28,10 @@ describe('coleta e crafting', () => {
     expect(state.repairBench()).toBe(false);
   });
 
-  it('mantém a pedra bloqueada antes da missão e recarrega depois da coleta', () => {
+  it('permite coletar pedra antes da missao e recarrega depois da coleta', () => {
     const state = gameStore.getState();
     const now = 1_000_000;
-    expect(state.collectResource('stone-0', 'stone', now)).toBe(false);
-    state.setQuest(completedQuest);
+    expect(state.repairBench()).toBe(false);
     expect(state.collectResource('stone-0', 'stone', now)).toBe(true);
     expect(state.collectResource('stone-0', 'stone', now + RESOURCE_RESPAWN_MS - 1)).toBe(false);
     expect(gameStore.getState().resourceReadyAt['stone-0']).toBe(now + RESOURCE_RESPAWN_MS);
